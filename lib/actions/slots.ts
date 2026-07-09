@@ -90,13 +90,12 @@ export async function toggleSlotClaim(slotId: number) {
         user.id,
       ])
     } else {
-      // Verificar capacidad (0 = ilimitada)
       const slotRes = await query(
-        `SELECT s.capacity, COUNT(c.user_id)::int AS claims
+        `SELECT s.created_by, s.title, s.capacity, COUNT(c.user_id)::int AS claims
          FROM collab_slots s
          LEFT JOIN collab_slot_claims c ON c.slot_id = s.id
          WHERE s.id = $1
-         GROUP BY s.capacity`,
+         GROUP BY s.id, s.created_by, s.title, s.capacity`,
         [slotId],
       )
       const slot = slotRes.rows[0]
@@ -109,6 +108,20 @@ export async function toggleSlotClaim(slotId: number) {
          ON CONFLICT DO NOTHING`,
         [slotId, user.id],
       )
+
+      if (slot.created_by !== user.id) {
+        const profRes = await query(`SELECT display_name FROM profiles WHERE user_id = $1`, [
+          user.id,
+        ])
+        const claimerName = profRes.rows[0]?.display_name ?? user.name
+        await query(
+          `INSERT INTO notifications (user_id, type, payload) VALUES ($1, 'slot_claimed', $2::jsonb)`,
+          [
+            slot.created_by,
+            JSON.stringify({ claimer: claimerName, title: slot.title }),
+          ],
+        )
+      }
     }
     revalidatePath('/slots')
     return { success: true }

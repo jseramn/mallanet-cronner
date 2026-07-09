@@ -1,5 +1,6 @@
 'use server'
 
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateText } from 'ai'
 import { getSessionUser } from '@/lib/session'
 import { getMyTeam } from '@/lib/actions/team'
@@ -8,9 +9,17 @@ import { expandAvailability, formatOffset, tzOffsetMinutes } from '@/lib/time'
 
 /**
  * Sugerencias de mejores slots de colaboración para los próximos 7 días,
- * generadas con AWS Bedrock a partir de la disponibilidad real del equipo.
+ * generadas con OpenRouter a partir de la disponibilidad real del equipo.
  */
 export async function suggestCollabSlots(): Promise<{ suggestions?: string; error?: string }> {
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    return {
+      error:
+        'La integración de IA no está configurada. Añade OPENROUTER_API_KEY en las variables de entorno.',
+    }
+  }
+
   const user = await getSessionUser()
   if (!user) return { error: 'No autenticado' }
 
@@ -26,7 +35,6 @@ export async function suggestCollabSlots(): Promise<{ suggestions?: string; erro
     windowEnd.toISOString(),
   )
 
-  // Resumen compacto de disponibilidad por miembro para el prompt
   const summary = availabilities
     .map((a) => {
       const segs = expandAvailability(
@@ -52,9 +60,12 @@ export async function suggestCollabSlots(): Promise<{ suggestions?: string; erro
     })
     .join('\n')
 
+  const openrouter = createOpenRouter({ apiKey })
+  const modelId = process.env.OPENROUTER_MODEL_ID ?? 'anthropic/claude-3-haiku'
+
   try {
     const { text } = await generateText({
-      model: 'bedrock/anthropic.claude-3-5-haiku-20241022-v1:0',
+      model: openrouter(modelId),
       system:
         'Eres un asistente de coordinación de equipos distribuidos. Respondes en español, ' +
         'de forma concisa y accionable. Todas las horas que propongas deben indicarse en UTC ' +
@@ -68,10 +79,10 @@ export async function suggestCollabSlots(): Promise<{ suggestions?: string; erro
     })
     return { suggestions: text }
   } catch (error) {
-    console.log('[v0] suggestCollabSlots error:', (error as Error).message)
+    console.error('[cronner] suggestCollabSlots error:', (error as Error).message)
     return {
       error:
-        'No se pudieron generar sugerencias. Verifica que la integración con AWS Bedrock esté disponible.',
+        'No se pudieron generar sugerencias. Verifica que OPENROUTER_API_KEY sea válida y que el modelo esté disponible.',
     }
   }
 }

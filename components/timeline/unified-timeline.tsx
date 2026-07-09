@@ -10,6 +10,7 @@ import {
   currentStatus,
   formatLocalTime,
   formatOffset,
+  startOfDayInTz,
   tzOffsetMinutes,
   type StatusSegment,
 } from '@/lib/time'
@@ -20,12 +21,6 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i)
 interface DragState {
   startPct: number
   endPct: number
-}
-
-function startOfDayLocal(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d
 }
 
 export function UnifiedTimeline({
@@ -51,12 +46,11 @@ export function UnifiedTimeline({
     return () => clearInterval(id)
   }, [])
 
-  // Ventana del día visible (en la hora local del navegador ≈ mi TZ)
-  const windowStart = useMemo(() => {
-    const base = startOfDayLocal(new Date())
-    base.setDate(base.getDate() + dayOffset)
-    return base
-  }, [dayOffset])
+  // Ventana del día visible en la timezone del perfil del usuario
+  const windowStart = useMemo(
+    () => startOfDayInTz(myTimezone, new Date(), dayOffset),
+    [dayOffset, myTimezone],
+  )
   const windowEnd = useMemo(
     () => new Date(windowStart.getTime() + 24 * 3600_000),
     [windowStart],
@@ -141,6 +135,7 @@ export function UnifiedTimeline({
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    timeZone: myTimezone,
   })
 
   return (

@@ -12,7 +12,7 @@ function describe(n: Notification): string {
     case 'slot_claimed':
       return `${p.claimer ?? 'Alguien'} se unió a "${p.title ?? 'un slot'}"`
     case 'slot_created':
-      return `Nuevo slot de colaboración: "${p.title ?? ''}"`
+      return `${p.creator ?? 'Alguien'} propuso un slot: "${p.title ?? ''}"`
     case 'member_joined':
       return `${p.member ?? 'Alguien'} se unió al equipo`
     default:

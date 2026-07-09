@@ -170,3 +170,33 @@ export function minutesToLabel(min: number): string {
   const m = String(min % 60).padStart(2, '0')
   return `${h}:${m}`
 }
+
+/** Medianoche de un día en una zona IANA, con offset opcional de días calendario. */
+export function startOfDayInTz(
+  timeZone: string,
+  baseDate: Date = new Date(),
+  dayOffset = 0,
+): Date {
+  const dateKey = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(baseDate)
+  const midnightUtc = localDateToUtcMs(dateKey, 0, timeZone)
+  if (dayOffset === 0) return new Date(midnightUtc)
+
+  const targetKey = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(midnightUtc + dayOffset * 24 * 3600_000))
+  return new Date(localDateToUtcMs(targetKey, 0, timeZone))
+}
+
+/** Convierte fecha (YYYY-MM-DD) + hora (HH:mm) en una zona IANA a Date UTC. */
+export function localDateTimeToUtc(dateKey: string, timeStr: string, timeZone: string): Date {
+  const [h, m] = timeStr.split(':').map(Number)
+  return new Date(localDateToUtcMs(dateKey, h * 60 + m, timeZone))
+}

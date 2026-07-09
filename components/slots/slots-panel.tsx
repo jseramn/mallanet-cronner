@@ -6,7 +6,7 @@ import { CalendarPlus, Sparkles, Trash2, UserCheck, UserMinus } from 'lucide-rea
 import { createCollabSlot, deleteCollabSlot, toggleSlotClaim } from '@/lib/actions/slots'
 import { suggestCollabSlots } from '@/lib/actions/suggest'
 import { Button } from '@/components/ui/button'
-import { formatLocalTime } from '@/lib/time'
+import { formatLocalTime, localDateTimeToUtc } from '@/lib/time'
 import type { CollabSlot } from '@/lib/types'
 
 export function SlotsPanel({
@@ -38,8 +38,8 @@ export function SlotsPanel({
       setError('Completa título y fecha')
       return
     }
-    const startsAt = new Date(`${date}T${startTime}`).toISOString()
-    const endsAt = new Date(`${date}T${endTime}`).toISOString()
+    const startsAt = localDateTimeToUtc(date, startTime, myTimezone).toISOString()
+    const endsAt = localDateTimeToUtc(date, endTime, myTimezone).toISOString()
     setPending(true)
     const res = await createCollabSlot({ title: title.trim(), startsAt, endsAt, capacity })
     setPending(false)
@@ -164,7 +164,7 @@ export function SlotsPanel({
         <div className="rounded-lg border border-primary/40 bg-card p-4">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary">
             <Sparkles size={12} aria-hidden="true" />
-            Sugerencias de IA (AWS Bedrock)
+            Sugerencias de IA
           </p>
           <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
             {aiText}
