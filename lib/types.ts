@@ -17,7 +17,6 @@ export interface Team {
 
 export interface TeamMember extends Profile {
   role: 'owner' | 'member'
-  email: string
 }
 
 export interface RecurringSchedule {

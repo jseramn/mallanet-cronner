@@ -65,7 +65,7 @@ export default async function HomePage() {
 
       <footer className="border-t px-6 py-4 text-center">
         <p className="text-xs text-muted-foreground font-mono">
-          Mallanet Cronner · software libre · privacidad · comunidad
+          Mallanet Cronner · privacidad · comunidad · mallanet.org
         </p>
       </footer>
     </main>

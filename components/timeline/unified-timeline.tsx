@@ -38,6 +38,7 @@ export function UnifiedTimeline({
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dragStatus, setDragStatus] = useState<AvailabilityStatus>('blocked')
   const [now, setNow] = useState<Date | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -46,16 +47,16 @@ export function UnifiedTimeline({
     return () => clearInterval(id)
   }, [])
 
-  // Ventana del día visible en la timezone del perfil del usuario
+  // Ventana del día visible en la timezone del perfil (respeta días DST de 23/25h)
   const windowStart = useMemo(
     () => startOfDayInTz(myTimezone, new Date(), dayOffset),
     [dayOffset, myTimezone],
   )
   const windowEnd = useMemo(
-    () => new Date(windowStart.getTime() + 24 * 3600_000),
-    [windowStart],
+    () => startOfDayInTz(myTimezone, new Date(), dayOffset + 1),
+    [dayOffset, myTimezone],
   )
-  const windowMs = 24 * 3600_000
+  const windowMs = Math.max(1, windowEnd.getTime() - windowStart.getTime())
 
   // Segmentos por miembro
   const rows = useMemo(
@@ -122,12 +123,22 @@ export function UnifiedTimeline({
     if (b - a < 100 / 48 / 2) return
     const startsAt = new Date(windowStart.getTime() + (a / 100) * windowMs).toISOString()
     const endsAt = new Date(windowStart.getTime() + (b / 100) * windowMs).toISOString()
-    await createTimeBlock({ startsAt, endsAt, status: dragStatus })
+    setActionError(null)
+    const res = await createTimeBlock({ startsAt, endsAt, status: dragStatus })
+    if (res?.error) {
+      setActionError(res.error)
+      return
+    }
     router.refresh()
   }
 
   async function handleDeleteBlock(blockId: number) {
-    await deleteTimeBlock(blockId)
+    setActionError(null)
+    const res = await deleteTimeBlock(blockId)
+    if (res?.error) {
+      setActionError(res.error)
+      return
+    }
     router.refresh()
   }
 
@@ -140,6 +151,11 @@ export function UnifiedTimeline({
 
   return (
     <div className="flex flex-col gap-4">
+      {actionError && (
+        <p role="alert" className="text-xs text-destructive">
+          {actionError}
+        </p>
+      )}
       {/* Barra de filtros y navegación */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">

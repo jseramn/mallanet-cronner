@@ -1,39 +1,56 @@
 import { betterAuth } from 'better-auth'
 import { nextCookies } from 'better-auth/next-js'
 import { pool } from './db'
+import { normalizeOrigin } from './origins'
 
-const baseURL =
-  process.env.BETTER_AUTH_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : undefined) ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
-  process.env.V0_RUNTIME_URL ||
-  'http://localhost:3000'
+function resolveBaseURL(): string {
+  if (process.env.BETTER_AUTH_URL) {
+    return normalizeOrigin(process.env.BETTER_AUTH_URL)
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  if (process.env.V0_RUNTIME_URL) {
+    return normalizeOrigin(process.env.V0_RUNTIME_URL)
+  }
+  return 'http://localhost:3000'
+}
 
-const trustedOrigins = [
-  'http://localhost:3000',
-  ...(process.env.V0_RUNTIME_URL ? [process.env.V0_RUNTIME_URL] : []),
-  ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
-  ...(process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? [`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`]
-    : []),
-]
+const baseURL = resolveBaseURL()
+
+const trustedOrigins = new Set<string>(['http://localhost:3000', baseURL])
+
+if (process.env.BETTER_AUTH_URL) {
+  trustedOrigins.add(normalizeOrigin(process.env.BETTER_AUTH_URL))
+}
+if (process.env.V0_RUNTIME_URL) {
+  trustedOrigins.add(normalizeOrigin(process.env.V0_RUNTIME_URL))
+}
+if (process.env.VERCEL_URL) {
+  trustedOrigins.add(`https://${process.env.VERCEL_URL}`)
+}
+if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+  trustedOrigins.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
+}
+
+// Solo para el preview iframe de v0 (cross-site); no en development local HTTP.
+const useCrossSiteCookies = Boolean(process.env.V0_RUNTIME_URL)
 
 export const auth = betterAuth({
   baseURL,
-  trustedOrigins,
+  trustedOrigins: [...trustedOrigins],
   database: pool,
   emailAndPassword: {
     enabled: true,
+    minPasswordLength: 8,
   },
   plugins: [nextCookies()],
-  advanced:
-    process.env.NODE_ENV === 'development'
-      ? {
-          // El preview de v0 corre en un iframe cross-site: sin estos atributos
-          // el navegador descarta la cookie de sesión silenciosamente.
-          defaultCookieAttributes: { sameSite: 'none', secure: true },
-        }
-      : undefined,
+  advanced: useCrossSiteCookies
+    ? {
+        defaultCookieAttributes: { sameSite: 'none', secure: true },
+      }
+    : undefined,
 })

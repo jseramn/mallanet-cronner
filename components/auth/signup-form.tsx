@@ -63,7 +63,8 @@ export function SignupForm() {
       setError(res.error)
       return
     }
-    router.push('/dashboard')
+    // Tras el alta, el banner de equipo y el perfil ya cubren el onboarding
+    router.push('/team')
     router.refresh()
   }
 

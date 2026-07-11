@@ -4,10 +4,11 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { query } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
+import { timeZoneSchema } from '@/lib/validation'
 
 const profileSchema = z.object({
   displayName: z.string().trim().min(1).max(80),
-  timezone: z.string().trim().min(1).max(64),
+  timezone: timeZoneSchema,
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   workMode: z.enum(['full-time', 'part-time']),
 })
@@ -37,7 +38,7 @@ export async function upsertProfile(input: {
     revalidatePath('/', 'layout')
     return { success: true }
   } catch (error) {
-    console.log('[v0] upsertProfile error:', (error as Error).message)
+    console.error('[cronner] upsertProfile error:', (error as Error).message)
     return { error: 'Error al guardar el perfil' }
   }
 }

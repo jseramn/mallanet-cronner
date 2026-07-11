@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import { Bell } from 'lucide-react'
 import { getMyNotifications, markNotificationsRead } from '@/lib/actions/notifications'
@@ -15,9 +16,20 @@ function describe(n: Notification): string {
       return `${p.creator ?? 'Alguien'} propuso un slot: "${p.title ?? ''}"`
     case 'member_joined':
       return `${p.member ?? 'Alguien'} se unió al equipo`
+    case 'member_removed':
+      return p.message ?? 'Has sido expulsado del equipo'
+    case 'ownership_transferred':
+      return p.message ?? 'Ahora eres el owner del equipo'
+    case 'team_deleted':
+      return p.message ?? 'El equipo fue eliminado'
     default:
       return n.type
   }
+}
+
+function hrefOf(n: Notification): string | null {
+  const href = (n.payload as Record<string, string>).href
+  return typeof href === 'string' && href.startsWith('/') ? href : null
 }
 
 export function NotificationsPopover() {
@@ -75,22 +87,37 @@ export function NotificationsPopover() {
               </p>
             ) : (
               <ul className="flex flex-col max-h-72 overflow-y-auto">
-                {notifications.map((n) => (
-                  <li
-                    key={n.id}
-                    className="rounded-md px-2 py-2 text-sm hover:bg-accent"
-                  >
-                    <p className="leading-snug">{describe(n)}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
-                      {new Date(n.created_at).toLocaleString('es', {
-                        day: '2-digit',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </li>
-                ))}
+                {notifications.map((n) => {
+                  const href = hrefOf(n)
+                  const body = (
+                    <>
+                      <p className="leading-snug">{describe(n)}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                        {new Date(n.created_at).toLocaleString('es', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </>
+                  )
+                  return (
+                    <li key={n.id} className="rounded-md text-sm hover:bg-accent">
+                      {href ? (
+                        <Link
+                          href={href}
+                          onClick={() => setOpen(false)}
+                          className="block px-2 py-2"
+                        >
+                          {body}
+                        </Link>
+                      ) : (
+                        <div className="px-2 py-2">{body}</div>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>

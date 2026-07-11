@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarPlus, Sparkles, Trash2, UserCheck, UserMinus } from 'lucide-react'
 import { createCollabSlot, deleteCollabSlot, toggleSlotClaim } from '@/lib/actions/slots'
-import { suggestCollabSlots } from '@/lib/actions/suggest'
+import { suggestCollabSlots, type SlotSuggestion } from '@/lib/actions/suggest'
 import { Button } from '@/components/ui/button'
 import { formatLocalTime, localDateTimeToUtc } from '@/lib/time'
 import type { CollabSlot } from '@/lib/types'
@@ -29,7 +29,9 @@ export function SlotsPanel({
   const [pending, setPending] = useState(false)
 
   const [aiText, setAiText] = useState<string | null>(null)
+  const [aiStructured, setAiStructured] = useState<SlotSuggestion[] | null>(null)
   const [aiPending, setAiPending] = useState(false)
+  const [creatingFromAi, setCreatingFromAi] = useState<string | null>(null)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -53,22 +55,49 @@ export function SlotsPanel({
   }
 
   async function handleToggle(slotId: number) {
+    setError(null)
     const res = await toggleSlotClaim(slotId)
     if (res.error) setError(res.error)
     router.refresh()
   }
 
   async function handleDelete(slotId: number) {
-    await deleteCollabSlot(slotId)
+    setError(null)
+    const res = await deleteCollabSlot(slotId)
+    if (res.error) setError(res.error)
     router.refresh()
   }
 
   async function handleSuggest() {
     setAiPending(true)
     setAiText(null)
+    setAiStructured(null)
+    setError(null)
     const res = await suggestCollabSlots()
     setAiPending(false)
-    setAiText(res.suggestions ?? res.error ?? null)
+    if (res.error) {
+      setError(res.error)
+      return
+    }
+    setAiText(res.suggestions ?? null)
+    setAiStructured(res.structured ?? null)
+  }
+
+  async function createFromSuggestion(s: SlotSuggestion) {
+    setCreatingFromAi(s.startsAt)
+    setError(null)
+    const res = await createCollabSlot({
+      title: s.title,
+      startsAt: s.startsAt,
+      endsAt: s.endsAt,
+      capacity: 0,
+    })
+    setCreatingFromAi(null)
+    if (res.error) {
+      setError(res.error)
+      return
+    }
+    router.refresh()
   }
 
   return (
@@ -138,7 +167,7 @@ export function SlotsPanel({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-              Capacidad (0 = sin límite)
+              Capacidad (0 = ilimitado)
               <input
                 type="number"
                 min={0}
@@ -160,7 +189,56 @@ export function SlotsPanel({
         </form>
       )}
 
-      {aiText && (
+      {aiStructured && aiStructured.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-primary/40 bg-card p-4">
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <Sparkles size={12} aria-hidden="true" />
+            Sugerencias de IA (crear con un clic)
+          </p>
+          <ul className="flex flex-col gap-2">
+            {aiStructured.map((s) => {
+              const start = new Date(s.startsAt)
+              const end = new Date(s.endsAt)
+              return (
+                <li
+                  key={`${s.startsAt}-${s.title}`}
+                  className="flex flex-col gap-2 rounded-md border bg-background/50 p-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{s.title}</p>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {start.toLocaleDateString('es', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}{' '}
+                      · {formatLocalTime(myTimezone, start)}–{formatLocalTime(myTimezone, end)} (tu
+                      hora)
+                    </p>
+                    {s.reason && (
+                      <p className="mt-1 text-xs text-muted-foreground text-pretty">{s.reason}</p>
+                    )}
+                    {s.attendees.length > 0 && (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Posibles: {s.attendees.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={creatingFromAi === s.startsAt}
+                    onClick={() => createFromSuggestion(s)}
+                  >
+                    {creatingFromAi === s.startsAt ? 'Creando…' : 'Crear slot'}
+                  </Button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      {aiText && !aiStructured?.length && (
         <div className="rounded-lg border border-primary/40 bg-card p-4">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary">
             <Sparkles size={12} aria-hidden="true" />
@@ -216,7 +294,7 @@ export function SlotsPanel({
                     ))}
                     <span className="text-[10px] text-muted-foreground">
                       {slot.claims.length}
-                      {slot.capacity > 0 ? `/${slot.capacity}` : ''} apuntado(s)
+                      {slot.capacity > 0 ? `/${slot.capacity}` : ' · ilimitado'} apuntado(s)
                     </span>
                   </div>
                 </div>

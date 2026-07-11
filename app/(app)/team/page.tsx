@@ -8,11 +8,20 @@ import { MemberList } from '@/components/team/member-list'
 
 export const metadata: Metadata = { title: 'Equipo — Mallanet Cronner' }
 
-export default async function TeamPage() {
+export default async function TeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>
+}) {
   const user = await getSessionUser()
   if (!user) redirect('/login')
 
+  const params = await searchParams
+  const initialCode = typeof params.code === 'string' ? params.code.trim() : ''
+
   const [teamData, profile] = await Promise.all([getMyTeam(), getMyProfile()])
+  const myRole =
+    teamData?.members.find((m) => m.user_id === user.id)?.role ?? ('member' as const)
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
@@ -34,9 +43,11 @@ export default async function TeamPage() {
           members={teamData.members}
           inviteCode={teamData.team.invite_code}
           myTimezone={profile?.timezone ?? 'UTC'}
+          myUserId={user.id}
+          myRole={myRole}
         />
       ) : (
-        <TeamSetup />
+        <TeamSetup initialCode={initialCode} />
       )}
     </div>
   )

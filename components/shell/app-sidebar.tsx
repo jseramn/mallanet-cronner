@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CalendarClock, Orbit, Users, UserRound, LogOut, Handshake } from 'lucide-react'
+import { CalendarClock, Orbit, Users, UserRound, LogOut, Handshake, Bot } from 'lucide-react'
 import { signOut } from '@/lib/auth-client'
 import { formatLocalTime, formatOffset, tzOffsetMinutes } from '@/lib/time'
 import { NotificationsPopover } from '@/components/notifications/notifications-popover'
@@ -14,6 +14,7 @@ const NAV = [
   { href: '/galaxy', label: 'Galaxia', icon: Orbit },
   { href: '/slots', label: 'Slots', icon: Handshake },
   { href: '/team', label: 'Equipo', icon: Users },
+  { href: '/assistant', label: 'Asistente', icon: Bot },
   { href: '/profile', label: 'Perfil', icon: UserRound },
 ]
 

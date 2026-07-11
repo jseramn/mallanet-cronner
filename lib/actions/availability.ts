@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { query } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
 import { getMyTeam } from '@/lib/actions/team'
+import { isTimeBlockDurationOk, parseAvailabilityWindow } from '@/lib/validation'
 import type { RecurringSchedule, TimeBlock, TeamMember } from '@/lib/types'
 
 export interface MemberAvailability {
@@ -23,6 +24,9 @@ export async function getTeamAvailability(
   const user = await getSessionUser()
   if (!user) return []
 
+  const window = parseAvailabilityWindow(windowStartIso, windowEndIso)
+  if ('error' in window) return []
+
   const teamData = await getMyTeam()
   if (!teamData) return []
 
@@ -40,7 +44,7 @@ export async function getTeamAvailability(
         `SELECT id, user_id, starts_at, ends_at, status, title, note
          FROM time_blocks
          WHERE user_id = ANY($1) AND ends_at > $2 AND starts_at < $3`,
-        [memberIds, windowStartIso, windowEndIso],
+        [memberIds, window.start.toISOString(), window.end.toISOString()],
       ),
     ])
 
@@ -56,7 +60,7 @@ export async function getTeamAvailability(
         })),
     }))
   } catch (error) {
-    console.log('[v0] getTeamAvailability error:', (error as Error).message)
+    console.error('[cronner] getTeamAvailability error:', (error as Error).message)
     return []
   }
 }
@@ -81,6 +85,8 @@ export async function createTimeBlock(input: {
   if (!parsed.success) return { error: 'Bloque inválido' }
   if (new Date(parsed.data.endsAt) <= new Date(parsed.data.startsAt))
     return { error: 'Rango inválido' }
+  if (!isTimeBlockDurationOk(parsed.data.startsAt, parsed.data.endsAt))
+    return { error: 'El bloque no puede superar 72 horas' }
 
   try {
     await query(
@@ -91,7 +97,7 @@ export async function createTimeBlock(input: {
     revalidatePath('/dashboard')
     return { success: true }
   } catch (error) {
-    console.log('[v0] createTimeBlock error:', (error as Error).message)
+    console.error('[cronner] createTimeBlock error:', (error as Error).message)
     return { error: 'Error al crear el bloque' }
   }
 }
@@ -99,6 +105,7 @@ export async function createTimeBlock(input: {
 export async function deleteTimeBlock(blockId: number) {
   const user = await getSessionUser()
   if (!user) return { error: 'No autenticado' }
+  if (!Number.isInteger(blockId) || blockId < 1) return { error: 'Bloque inválido' }
   try {
     await query(`DELETE FROM time_blocks WHERE id = $1 AND user_id = $2`, [blockId, user.id])
     revalidatePath('/dashboard')

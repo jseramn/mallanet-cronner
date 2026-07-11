@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: cronner
+      POSTGRES_PASSWORD: cronner
+      POSTGRES_DB: cronner_seed
+    volumes:
+      - cronner_seed_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cronner -d cronner_seed']
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  cronner_seed_data:

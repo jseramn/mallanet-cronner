@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createTeam, joinTeam } from '@/lib/actions/team'
 import { Button } from '@/components/ui/button'
 
-export function TeamSetup() {
+export function TeamSetup({ initialCode = '' }: { initialCode?: string }) {
   const router = useRouter()
-  const [mode, setMode] = useState<'create' | 'join'>('create')
+  const [mode, setMode] = useState<'create' | 'join'>(initialCode ? 'join' : 'create')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [joinCode, setJoinCode] = useState(initialCode)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -19,7 +20,7 @@ export function TeamSetup() {
     const res =
       mode === 'create'
         ? await createTeam(String(form.get('value')))
-        : await joinTeam(String(form.get('value')))
+        : await joinTeam(joinCode.trim() || String(form.get('value')))
     setLoading(false)
     if (res?.error) {
       setError(res.error)
@@ -34,6 +35,7 @@ export function TeamSetup() {
         {(['create', 'join'] as const).map((m) => (
           <button
             key={m}
+            type="button"
             role="tab"
             aria-selected={mode === m}
             onClick={() => setMode(m)}
@@ -47,21 +49,36 @@ export function TeamSetup() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-muted-foreground">
-            {mode === 'create' ? 'Nombre del equipo' : 'Código de invitación'}
-          </span>
-          <input
-            name="value"
-            required
-            maxLength={mode === 'create' ? 80 : 12}
-            className={`h-10 rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              mode === 'join' ? 'font-mono' : ''
-            }`}
-            placeholder={mode === 'create' ? 'Equipo Respuesta Rápida' : 'abc123XY'}
-          />
-        </label>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {mode === 'create' ? (
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="text-muted-foreground">Nombre del equipo</span>
+            <input
+              name="value"
+              required
+              maxLength={80}
+              className="h-10 rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Equipo Respuesta Rápida"
+            />
+          </label>
+        ) : (
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="text-muted-foreground">Código de invitación</span>
+            <input
+              name="value"
+              required
+              maxLength={12}
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              className="h-10 rounded-md border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+              placeholder="abc123XY"
+            />
+          </label>
+        )}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <Button type="submit" disabled={loading}>
           {loading ? 'Procesando…' : mode === 'create' ? 'Crear equipo' : 'Unirme'}
         </Button>

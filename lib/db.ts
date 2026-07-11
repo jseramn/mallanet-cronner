@@ -22,13 +22,35 @@ export async function query(text: string, params?: unknown[]) {
   return pool.query(text, params)
 }
 
-// Para transacciones multi-sentencia.
+// Conexión sin transacción (para operaciones multi-query sin atomicidad).
 export async function withConnection<T>(
   fn: (client: ClientBase) => Promise<T>,
 ): Promise<T> {
   const client = await pool.connect()
   try {
     return await fn(client)
+  } finally {
+    client.release()
+  }
+}
+
+/** Transacción con COMMIT/ROLLBACK correctos (evita conexiones abortadas en el pool). */
+export async function withTransaction<T>(
+  fn: (client: ClientBase) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const result = await fn(client)
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK')
+    } catch {
+      // ignore rollback errors
+    }
+    throw error
   } finally {
     client.release()
   }
