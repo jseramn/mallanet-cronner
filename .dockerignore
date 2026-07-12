@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+*.md
+.env*
+docker-compose.yml
+tsconfig.tsbuildinfo
+vitest.config.ts
+eslint.config.mjs
