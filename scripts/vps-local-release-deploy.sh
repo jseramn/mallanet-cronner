@@ -14,8 +14,8 @@ umask 077
 }
 
 GIT_SHA=${1:-${GIT_SHA:-}}
-[[ "$GIT_SHA" =~ ^[0-9a-f]{40}$ ]] || {
-  echo "uso: cronner-vps-release <gitSha40>" >&2
+[[ "$GIT_SHA" =~ ^[0-9a-f]{7,40}$ ]] || {
+  echo "uso: cronner-vps-release <git-sha>" >&2
   exit 64
 }
 
@@ -23,6 +23,27 @@ REPO=${CRONNER_RELEASE_REPO:-/opt/cronner-release}
 STATE_DIR=${CRONNER_DEPLOY_STATE_DIR:-/var/lib/cronner-deploy}
 ENV_FILE=${CRONNER_CONFIG_DIR:-/etc/cronner}/prod.env
 GIT_REMOTE=${CRONNER_GIT_REMOTE:-git@github.com-mallanet-cronner:mallanet/mallanet-cronner.git}
+
+resolve_git_sha() {
+  local ref=$1 dir
+  for dir in "$REPO" "${CRONNER_BOOTSTRAP_SRC:-/opt/cronner}"; do
+    [ -d "$dir/.git" ] || continue
+    git -C "$dir" fetch --depth=1 origin "$ref" >/dev/null 2>&1 || true
+    if git -C "$dir" rev-parse --verify "${ref}^{commit}" 2>/dev/null; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+if [[ "$GIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+  :
+elif resolved=$(resolve_git_sha "$GIT_SHA"); then
+  GIT_SHA=$resolved
+else
+  echo "[cronner-vps-release] no se pudo resolver SHA: ${1:-$GIT_SHA}" >&2
+  exit 64
+fi
 
 command -v cronner-deploy-release >/dev/null || {
   echo "[cronner-vps-release] falta cronner-deploy-release en PATH" >&2
