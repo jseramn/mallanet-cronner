@@ -1,0 +1,5 @@
+# Overlay: imagen fijada por manifest (digest local o GHCR).
+services:
+  cronner:
+    image: ${CRONNER_IMAGE:?CRONNER_IMAGE requerido}
+    pull_policy: ${RELEASE_PULL_POLICY:-never}

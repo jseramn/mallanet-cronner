@@ -1,0 +1,27 @@
+# CD en VPS mallanet — mismo patrón que mallanet/Terremotoapp (deploy-selfhosted).
+name: deploy-selfhosted
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: cronner-deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build local y deploy en Hostinger
+    runs-on: [self-hosted, hostinger]
+    timeout-minutes: 45
+    steps:
+      - name: Build y aplicar release
+        run: sudo /usr/local/sbin/cronner-vps-release ${{ github.sha }}
+
+      - name: Prune build cache
+        if: always()
+        run: docker builder prune --force --keep-storage 25GB >/dev/null

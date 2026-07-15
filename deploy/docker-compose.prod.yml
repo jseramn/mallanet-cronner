@@ -1,0 +1,59 @@
+# Producción en VPS mallanet. Secretos en /etc/cronner/prod.env (no commitear).
+services:
+  cronner-db:
+    image: postgres:16-alpine
+    container_name: cronner-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER requerido}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requerido}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB requerido}
+    volumes:
+      - cronner_db_data:/var/lib/postgresql/data
+    networks:
+      - cronner-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    mem_limit: 1g
+
+  cronner:
+    image: cronner:placeholder
+    container_name: cronner
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8333:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL requerido}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET requerido}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL requerido}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL_ID: ${OPENROUTER_MODEL_ID:-anthropic/claude-3-haiku}
+    networks:
+      - cronner-net
+    depends_on:
+      cronner-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    mem_limit: 1g
+
+networks:
+  cronner-net:
+    driver: bridge
+
+volumes:
+  cronner_db_data:
