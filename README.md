@@ -101,14 +101,17 @@ Para apagar Postgres local: `pnpm db:down`
 | `DATABASE_URL` | Sí | Connection string de Neon (pooled connection) |
 | `BETTER_AUTH_SECRET` | Sí | String aleatorio de al menos 32 caracteres |
 | `BETTER_AUTH_URL` | No* | URL base de la app; **recomendado en producción** (también se añade a trustedOrigins) |
-| `OPENROUTER_API_KEY` | No** | API key de OpenRouter (slots IA + asistente) |
-| `OPENROUTER_MODEL_ID` | No | Modelo por defecto (`anthropic/claude-3-haiku`) |
+| `AI_PROVIDER` | No | `mistral` u `openrouter` (si no se define, se elige por la key disponible) |
+| `MISTRAL_API_KEY` | No** | API key de Mistral (slots IA + asistente) |
+| `MISTRAL_MODEL_ID` | No | Modelo Mistral por defecto (`mistral-small-latest`) |
+| `OPENROUTER_API_KEY` | No** | API key de OpenRouter (alternativa / futuro) |
+| `OPENROUTER_MODEL_ID` | No | Modelo OpenRouter por defecto (`anthropic/claude-3-haiku`) |
 | `ASSISTANT_MODEL_ID` | No | Override de modelo solo para el asistente |
 | `ASSISTANT_RATE_LIMIT_MAX` | No | Mensajes del asistente por hora (default 30) |
 
 \* En local el default es `http://localhost:3000`. En Vercel se usan `VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL` si no defines `BETTER_AUTH_URL`.
 
-\*\* Sin `OPENROUTER_API_KEY` la app funciona, pero el botón "Sugerir con IA" mostrará un mensaje de error.
+\*\* Sin `MISTRAL_API_KEY` ni `OPENROUTER_API_KEY` la app funciona, pero el botón "Sugerir con IA" y el asistente mostrarán un mensaje de error.
 
 **Nunca** actives `SEED_MODE` / `NEXT_PUBLIC_SEED_MODE` en producción.
 
@@ -127,8 +130,12 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 | `pnpm start` | Servidor de producción |
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | Verificación de tipos TypeScript |
-| `pnpm test` | Tests unitarios (Vitest) |
-| `pnpm check` | lint + typecheck + test |
+| `pnpm test` | Tests unitarios / actions (Vitest, Node) |
+| `pnpm test:components` | Tests de componentes (Vitest + jsdom / RTL) |
+| `pnpm test:e2e` | E2E Playwright (requiere DB seed + build) |
+| `pnpm test:e2e:prepare` | Migrar + seed para E2E |
+| `pnpm test:all` | unit + components + e2e |
+| `pnpm check` | lint + typecheck + unit + components |
 | `pnpm db:migrate` | Aplicar migraciones versionadas |
 | `pnpm db:schema` | Aplicar solo schema base `001` |
 | `pnpm db:tables` | Listar tablas de la base de datos |
@@ -136,6 +143,34 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 | `pnpm db:down` | Apagar Postgres local |
 | `pnpm db:seed` | Sembrar BD con datos simulados |
 | `pnpm dev:seed` | Dev con semilla local (sin Neon) |
+
+## Tests
+
+| Comando | Windows | CI Linux (paridad VPS) |
+|---------|---------|-------------------------|
+| `pnpm test` / `pnpm test:components` | Sí | Sí (job `check`) |
+| `pnpm test:e2e` | Docker Desktop + seed | Job `e2e` (Postgres service) |
+
+### Unit + componentes (sin Docker)
+
+```bash
+pnpm test
+pnpm test:components
+# o
+pnpm check
+```
+
+### E2E local (Windows)
+
+1. Docker Desktop encendido
+2. `pnpm db:up`
+3. Copiá `.env.seed.local.example` → `.env.seed.local` si no existe
+4. `pnpm test:e2e:prepare`
+5. `pnpm build` (carga env de `.env.local` / seed según tu setup)
+6. `pnpm exec playwright install chromium` (solo la primera vez)
+7. `pnpm test:e2e`
+
+En CI, `webServer` arranca `pnpm start` solo. Localmente reutiliza un servidor ya levantado si existe.
 
 ## Despliegue en Vercel
 

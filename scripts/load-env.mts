@@ -11,6 +11,7 @@ export function loadEnvFile(filename: string) {
     const idx = trimmed.indexOf('=')
     if (idx === -1) continue
     const key = trimmed.slice(0, idx).trim()
+    // trim() also strips CR leftover from Windows CRLF .env files
     const value = trimmed.slice(idx + 1).trim()
     if (key && process.env[key] === undefined) process.env[key] = value
   }

@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS recurring_schedules (
   start_minute INT NOT NULL CHECK (start_minute BETWEEN 0 AND 1439),
   end_minute INT NOT NULL CHECK (end_minute BETWEEN 1 AND 1440),
   status VARCHAR(12) NOT NULL
-    CHECK (status IN ('available', 'limited', 'blocked', 'focus')),
+    CHECK (status IN ('available', 'limited', 'blocked')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CHECK (end_minute > start_minute)
 );
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS time_blocks (
   starts_at TIMESTAMPTZ NOT NULL,
   ends_at TIMESTAMPTZ NOT NULL,
   status VARCHAR(12) NOT NULL
-    CHECK (status IN ('available', 'limited', 'blocked', 'focus')),
+    CHECK (status IN ('available', 'limited', 'blocked')),
   title VARCHAR(120),
   note VARCHAR(500),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

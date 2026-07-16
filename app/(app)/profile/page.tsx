@@ -20,6 +20,7 @@ export default async function ProfilePage() {
     timezone: 'UTC',
     color: '#3b82f6',
     work_mode: 'full-time' as const,
+    onboarding_completed_at: null,
   }
 
   return (

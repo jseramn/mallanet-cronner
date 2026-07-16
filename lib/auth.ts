@@ -21,7 +21,11 @@ function resolveBaseURL(): string {
 
 const baseURL = resolveBaseURL()
 
-const trustedOrigins = new Set<string>(['http://localhost:3000', baseURL])
+const trustedOrigins = new Set<string>([
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  baseURL,
+])
 
 if (process.env.BETTER_AUTH_URL) {
   trustedOrigins.add(normalizeOrigin(process.env.BETTER_AUTH_URL))

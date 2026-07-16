@@ -78,7 +78,7 @@ export function UnifiedTimeline({
     if (!onlyAvailableNow || !now) return rows
     return rows.filter((r) => {
       const s = currentStatus(r.segments, now)
-      return s === 'available' || s === 'limited'
+      return s === 'available'
     })
   }, [rows, onlyAvailableNow, now])
 
@@ -87,7 +87,7 @@ export function UnifiedTimeline({
     const bins = Array(48).fill(0)
     for (const r of rows) {
       for (const seg of r.segments) {
-        if (seg.status !== 'available' && seg.status !== 'limited') continue
+        if (seg.status !== 'available') continue
         const from = Math.max(0, Math.floor(((seg.startMs - windowStart.getTime()) / windowMs) * 48))
         const to = Math.min(48, Math.ceil(((seg.endMs - windowStart.getTime()) / windowMs) * 48))
         for (let i = from; i < to; i++) bins[i]++
@@ -179,7 +179,7 @@ export function UnifiedTimeline({
               onlyAvailableNow ? 'border-primary bg-accent text-accent-foreground' : 'hover:bg-accent'
             }`}
           >
-            Disponibles ahora
+            En Mallanet ahora
           </button>
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             Pincel:

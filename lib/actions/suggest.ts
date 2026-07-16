@@ -1,71 +1,29 @@
 'use server'
 
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateText } from 'ai'
+import { resolveAiConfig } from '@/lib/ai/model'
+import { mapAiError } from '@/lib/ai/errors'
 import { getSessionUser } from '@/lib/session'
 import { getMyTeam } from '@/lib/actions/team'
 import { getTeamAvailability } from '@/lib/actions/availability'
 import { checkAndConsumeRateLimit } from '@/lib/ai-rate-limit'
 import { expandAvailability, formatOffset, tzOffsetMinutes } from '@/lib/time'
+import { tryParseSuggestions, type SlotSuggestion } from '@/lib/suggest-parse'
 
 const RATE_LIMIT_MAX = 3
 
-export interface SlotSuggestion {
-  title: string
-  startsAt: string // ISO UTC
-  endsAt: string
-  reason: string
-  attendees: string[]
-}
-
-function tryParseSuggestions(text: string): SlotSuggestion[] | null {
-  try {
-    const jsonMatch = text.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) return null
-    const raw = JSON.parse(jsonMatch[0]) as unknown
-    if (!Array.isArray(raw)) return null
-    const out: SlotSuggestion[] = []
-    for (const item of raw.slice(0, 5)) {
-      if (!item || typeof item !== 'object') continue
-      const o = item as Record<string, unknown>
-      const title = String(o.title ?? '').trim()
-      const startsAt = String(o.startsAt ?? o.starts_at ?? '').trim()
-      const endsAt = String(o.endsAt ?? o.ends_at ?? '').trim()
-      if (!title || !startsAt || !endsAt) continue
-      const start = new Date(startsAt)
-      const end = new Date(endsAt)
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) continue
-      out.push({
-        title: title.slice(0, 120),
-        startsAt: start.toISOString(),
-        endsAt: end.toISOString(),
-        reason: String(o.reason ?? '').slice(0, 300),
-        attendees: Array.isArray(o.attendees)
-          ? o.attendees.map(String).slice(0, 20)
-          : [],
-      })
-    }
-    return out.length > 0 ? out : null
-  } catch {
-    return null
-  }
-}
-
 /**
  * Sugerencias de mejores slots de colaboración para los próximos 7 días,
- * generadas con OpenRouter a partir de la disponibilidad real del equipo.
+ * generadas con IA a partir de la disponibilidad real del equipo.
  */
 export async function suggestCollabSlots(): Promise<{
   suggestions?: string
   structured?: SlotSuggestion[]
   error?: string
 }> {
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) {
-    return {
-      error:
-        'La integración de IA no está configurada. Añade OPENROUTER_API_KEY en las variables de entorno.',
-    }
+  const ai = resolveAiConfig('slots')
+  if ('error' in ai) {
+    return { error: ai.error }
   }
 
   const user = await getSessionUser()
@@ -99,7 +57,7 @@ export async function suggestCollabSlots(): Promise<{
         windowEnd,
       )
       const availSegs = segs
-        .filter((s) => s.status === 'available' || s.status === 'limited')
+        .filter((s) => s.status === 'available')
         .slice(0, 40)
         .map(
           (s) =>
@@ -114,12 +72,9 @@ export async function suggestCollabSlots(): Promise<{
     })
     .join('\n')
 
-  const openrouter = createOpenRouter({ apiKey })
-  const modelId = process.env.OPENROUTER_MODEL_ID ?? 'anthropic/claude-3-haiku'
-
   try {
     const { text } = await generateText({
-      model: openrouter(modelId),
+      model: ai.model,
       system:
         'Eres un asistente de coordinación de equipos distribuidos. Respondes en español. ' +
         'Cuando sea posible, devuelve SOLO un array JSON (sin markdown) con objetos: ' +
@@ -139,9 +94,6 @@ export async function suggestCollabSlots(): Promise<{
     }
   } catch (error) {
     console.error('[cronner] suggestCollabSlots error:', (error as Error).message)
-    return {
-      error:
-        'No se pudieron generar sugerencias. Verifica que OPENROUTER_API_KEY sea válida y que el modelo esté disponible.',
-    }
+    return { error: mapAiError(error) }
   }
 }

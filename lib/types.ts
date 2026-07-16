@@ -1,4 +1,4 @@
-export type AvailabilityStatus = 'available' | 'limited' | 'blocked' | 'focus'
+export type AvailabilityStatus = 'available' | 'limited' | 'blocked'
 
 export interface Profile {
   user_id: string
@@ -6,6 +6,7 @@ export interface Profile {
   timezone: string
   color: string
   work_mode: 'full-time' | 'part-time'
+  onboarding_completed_at: string | null
 }
 
 export interface Team {
@@ -59,15 +60,13 @@ export interface Notification {
 }
 
 export const STATUS_LABELS: Record<AvailabilityStatus, string> = {
-  available: 'Disponible',
-  limited: 'Limitado',
-  blocked: 'Bloqueado',
-  focus: 'Deep focus',
+  available: 'Mallanet',
+  limited: 'Ocupado',
+  blocked: 'No disponible',
 }
 
 export const STATUS_COLORS: Record<AvailabilityStatus, string> = {
   available: 'var(--status-available)',
   limited: 'var(--status-limited)',
   blocked: 'var(--status-blocked)',
-  focus: 'var(--status-focus)',
 }

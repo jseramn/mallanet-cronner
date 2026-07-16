@@ -48,7 +48,7 @@ export async function getMyProfile() {
   if (!user) return null
   try {
     const res = await query(
-      `SELECT user_id, display_name, timezone, color, work_mode
+      `SELECT user_id, display_name, timezone, color, work_mode, onboarding_completed_at
        FROM profiles WHERE user_id = $1`,
       [user.id],
     )

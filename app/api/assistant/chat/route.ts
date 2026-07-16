@@ -1,7 +1,8 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { streamText, tool, type ModelMessage } from 'ai'
+import { streamText, tool, stepCountIs, type ModelMessage } from 'ai'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
+import { resolveAiConfig } from '@/lib/ai/model'
+import { mapAiError } from '@/lib/ai/errors'
 import { getSessionUser } from '@/lib/session'
 import { query } from '@/lib/db'
 import { checkAndConsumeRateLimit } from '@/lib/ai-rate-limit'
@@ -26,7 +27,8 @@ const ASSISTANT_RATE_MAX = Number(process.env.ASSISTANT_RATE_LIMIT_MAX ?? 30)
 
 function buildSystemPrompt(knowledgeBlock: string, userContext: string): string {
   return `Eres el asistente oficial de Mallanet Cronner (coordinación horaria para equipos distribuidos).
-Respondes siempre en español, de forma clara, concisa y accionable.
+Respondes siempre en español, de forma clara, concisa y conversacional (como un chat, no un documento).
+Estilo: prosa natural. Evitá markdown excesivo: no pongas negritas en cada frase, ni backticks en cada ruta, ni listas largas si bastan 2–3 frases. Si mencionás una pantalla, podés decir "en Slots (/slots)" en texto plano. Sin emojis salvo que el usuario los use.
 Usas SOLO la documentación de knowledge y el contexto del usuario. Si algo no está documentado, dilo y no inventes.
 Rutas de la app: /dashboard (timeline), /galaxy, /slots, /team, /profile, /assistant.
 Cuando el usuario pida una feature, reporte un bug o dé feedback de producto, usa la herramienta save_requirement
@@ -64,15 +66,9 @@ export async function POST(req: Request) {
     return Response.json({ error: 'No autenticado' }, { status: 401 })
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) {
-    return Response.json(
-      {
-        error:
-          'La IA no está configurada. Añade OPENROUTER_API_KEY en las variables de entorno del servidor.',
-      },
-      { status: 503 },
-    )
+  const ai = resolveAiConfig('assistant')
+  if ('error' in ai) {
+    return Response.json({ error: ai.error }, { status: 503 })
   }
 
   let json: unknown
@@ -148,16 +144,15 @@ export async function POST(req: Request) {
     content: r.content as string,
   }))
 
-  const modelId =
-    process.env.ASSISTANT_MODEL_ID ??
-    process.env.OPENROUTER_MODEL_ID ??
-    'anthropic/claude-3-haiku'
-  const openrouter = createOpenRouter({ apiKey })
-
   const result = streamText({
-    model: openrouter(modelId),
+    model: ai.model,
     system: buildSystemPrompt(knowledgeBlock, userContext),
     messages,
+    // Permite tool call + respuesta final (default isStepCount(1) deja el chat vacío)
+    stopWhen: stepCountIs(5),
+    onError: ({ error }) => {
+      console.error('[cronner] assistant stream error:', mapAiError(error), (error as Error).message)
+    },
     tools: {
       search_knowledge: tool({
         description:
@@ -224,7 +219,8 @@ export async function POST(req: Request) {
             content,
             JSON.stringify({
               knowledgeIds: hits.map((h) => h.article.id),
-              model: modelId,
+              model: ai.modelId,
+              provider: ai.provider,
             }),
           ],
         )

@@ -117,11 +117,11 @@ describe('currentStatus', () => {
       {
         startMs: new Date('2024-01-08T12:00:00Z').getTime(),
         endMs: new Date('2024-01-08T13:00:00Z').getTime(),
-        status: 'focus' as const,
+        status: 'blocked' as const,
         source: 'block' as const,
         blockId: 1,
       },
     ]
-    expect(currentStatus(segs, now)).toBe('focus')
+    expect(currentStatus(segs, now)).toBe('blocked')
   })
 })

@@ -63,8 +63,10 @@ export function SignupForm() {
       setError(res.error)
       return
     }
-    // Tras el alta, el banner de equipo y el perfil ya cubren el onboarding
-    router.push('/team')
+    const inviteCode = new URLSearchParams(window.location.search).get('code')?.trim()
+    router.push(
+      inviteCode ? `/onboarding?code=${encodeURIComponent(inviteCode)}` : '/onboarding',
+    )
     router.refresh()
   }
 

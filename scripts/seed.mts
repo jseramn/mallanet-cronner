@@ -88,7 +88,7 @@ function weekdaySchedule(
   days: number[],
   startMinute: number,
   endMinute: number,
-  status: 'available' | 'limited' | 'focus' = 'available',
+  status: 'available' | 'limited' | 'blocked' = 'available',
 ) {
   return days.map((day_of_week) => ({
     user_id: userId,
@@ -124,6 +124,7 @@ async function main() {
       '002-team-lifecycle.sql',
       '003-ai-rate-limit.sql',
       '004-assistant.sql',
+      '005-availability-statuses.sql',
     ]) {
       try {
         const sql = await readFile(resolve(process.cwd(), 'scripts/migrations', file), 'utf8')
@@ -172,9 +173,9 @@ async function main() {
         [nanoid(), u.id, u.id, passwordHash, now],
       )
       await client.query(
-        `INSERT INTO profiles (user_id, display_name, timezone, color, work_mode)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [u.id, u.displayName, u.timezone, u.color, u.workMode],
+        `INSERT INTO profiles (user_id, display_name, timezone, color, work_mode, onboarding_completed_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [u.id, u.displayName, u.timezone, u.color, u.workMode, now],
       )
     }
 
@@ -204,7 +205,7 @@ async function main() {
     schedules.push(...weekdaySchedule(yuki.id, [1, 2, 3, 4, 5], 600, 1080))
     schedules.push(...weekdaySchedule(sam.id, [1, 3, 5], 600, 840))
     schedules.push(...weekdaySchedule(priya.id, [1, 2, 3, 4, 5], 570, 1050))
-    schedules.push(...weekdaySchedule(marco.id, [3], 720, 780, 'focus'))
+    schedules.push(...weekdaySchedule(marco.id, [3], 720, 780, 'limited'))
     schedules.push(...weekdaySchedule(yuki.id, [2, 4], 900, 960, 'limited'))
 
     for (const s of schedules) {
@@ -227,7 +228,7 @@ async function main() {
         user_id: marco.id,
         starts_at: utcFromLocal(marco.timezone, 0, 10, 0),
         ends_at: utcFromLocal(marco.timezone, 0, 12, 0),
-        status: 'focus',
+        status: 'limited',
         title: 'Sprint planning',
       },
       {
@@ -259,7 +260,7 @@ async function main() {
     )
     const slot2 = await client.query(
       `INSERT INTO collab_slots (team_id, created_by, starts_at, ends_at, title, capacity)
-       VALUES ($1, $2, $3, $4, $5, 3) RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
       [teamId, marco.id, slot2Start, slot2End, 'Pairing frontend', 3],
     )
 

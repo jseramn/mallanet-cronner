@@ -41,7 +41,6 @@
   --color-status-available: var(--status-available);
   --color-status-limited: var(--status-limited);
   --color-status-blocked: var(--status-blocked);
-  --color-status-focus: var(--status-focus);
 
   --font-sans: 'Geist', 'Geist Fallback', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
@@ -104,11 +103,10 @@
   --sidebar-border: oklch(0.94 0.005 250 / 8%);
   --sidebar-ring: oklch(0.58 0.17 255 / 60%);
 
-  /* Semántica de disponibilidad */
-  --status-available: oklch(0.7 0.16 160);
-  --status-limited: oklch(0.78 0.15 85);
+  /* Semántica de disponibilidad: Mallanet / Ocupado / No disponible */
+  --status-available: oklch(0.62 0.17 255);
+  --status-limited: oklch(0.84 0.16 95);
   --status-blocked: oklch(0.62 0.19 25);
-  --status-focus: oklch(0.62 0.17 300);
 }
 
 /* Se duplican los tokens en .dark porque shadcn/tailwind.css define su propio
@@ -159,10 +157,9 @@
   --sidebar-border: oklch(0.94 0.005 250 / 8%);
   --sidebar-ring: oklch(0.58 0.17 255 / 60%);
 
-  --status-available: oklch(0.7 0.16 160);
-  --status-limited: oklch(0.78 0.15 85);
+  --status-available: oklch(0.62 0.17 255);
+  --status-limited: oklch(0.84 0.16 95);
   --status-blocked: oklch(0.62 0.19 25);
-  --status-focus: oklch(0.62 0.17 300);
 }
 
 @layer base {

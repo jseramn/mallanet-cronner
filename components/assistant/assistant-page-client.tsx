@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useState, useTransition } from 'react'
+import { useCallback, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, MessageSquare } from 'lucide-react'
 import {
   createConversation,
   deleteConversation,
+  getConversation,
   type AssistantConversation,
   type AssistantMessage,
   type UserRequirement,
@@ -31,12 +32,29 @@ export function AssistantPageClient({
   const [conversationId, setConversationId] = useState<string | null>(activeId)
   const [messages, setMessages] = useState(initialMessages)
   const [tab, setTab] = useState<'chat' | 'ideas'>('chat')
+  const [loadingConv, setLoadingConv] = useState(false)
+
+  useEffect(() => {
+    setConversations(initialConversations)
+  }, [initialConversations])
+
+  useEffect(() => {
+    setConversationId(activeId)
+    setMessages(initialMessages)
+  }, [activeId, initialMessages])
 
   const selectConversation = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      setTab('chat')
       setConversationId(id)
+      setLoadingConv(true)
+      try {
+        const data = await getConversation(id)
+        setMessages(data?.messages ?? [])
+      } finally {
+        setLoadingConv(false)
+      }
       router.push(`/assistant?c=${id}`)
-      startTransition(() => router.refresh())
     },
     [router],
   )
@@ -72,6 +90,7 @@ export function AssistantPageClient({
   }
 
   function onConversationId(id: string) {
+    if (!id) return
     setConversationId(id)
     setConversations((prev) => {
       if (prev.some((c) => c.id === id)) return prev
@@ -85,7 +104,6 @@ export function AssistantPageClient({
         ...prev,
       ]
     })
-    // Actualiza URL sin recargar mensajes a mitad de stream
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', `/assistant?c=${id}`)
     }
@@ -112,6 +130,7 @@ export function AssistantPageClient({
                 <button
                   type="button"
                   onClick={() => selectConversation(c.id)}
+                  disabled={loadingConv}
                   className={`flex-1 min-w-0 flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors ${
                     active
                       ? 'bg-accent text-accent-foreground'

@@ -8,7 +8,7 @@ import { STATUS_COLORS, STATUS_LABELS, type AvailabilityStatus, type RecurringSc
 
 const SLOT_MIN = 60 // celdas de 1 hora
 const SLOTS_PER_DAY = 24
-const STATUSES: (AvailabilityStatus | 'clear')[] = ['available', 'limited', 'blocked', 'focus', 'clear']
+const STATUSES: (AvailabilityStatus | 'clear')[] = ['available', 'limited', 'blocked', 'clear']
 
 type Grid = (AvailabilityStatus | null)[][] // [día][hora]
 
@@ -43,7 +43,13 @@ function toSlots(grid: Grid) {
   return slots
 }
 
-export function ScheduleEditor({ initial }: { initial: RecurringSchedule[] }) {
+export function ScheduleEditor({
+  initial,
+  onSaved,
+}: {
+  initial: RecurringSchedule[]
+  onSaved?: (slotCount: number) => void
+}) {
   const [grid, setGrid] = useState<Grid>(() => fromSchedule(initial))
   const [brush, setBrush] = useState<AvailabilityStatus | 'clear'>('available')
   const [saving, setSaving] = useState(false)
@@ -63,9 +69,15 @@ export function ScheduleEditor({ initial }: { initial: RecurringSchedule[] }) {
   async function handleSave() {
     setSaving(true)
     setMessage(null)
-    const res = await saveRecurringSchedule(toSlots(grid))
+    const slots = toSlots(grid)
+    const res = await saveRecurringSchedule(slots)
     setSaving(false)
-    setMessage(res?.error ? res.error : 'Horario guardado')
+    if (res?.error) {
+      setMessage(res.error)
+      return
+    }
+    setMessage('Horario guardado')
+    onSaved?.(slots.length)
   }
 
   return (

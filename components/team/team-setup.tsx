@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation'
 import { createTeam, joinTeam } from '@/lib/actions/team'
 import { Button } from '@/components/ui/button'
 
-export function TeamSetup({ initialCode = '' }: { initialCode?: string }) {
+export function TeamSetup({
+  initialCode = '',
+  onSuccess,
+}: {
+  initialCode?: string
+  onSuccess?: () => void
+}) {
   const router = useRouter()
   const [mode, setMode] = useState<'create' | 'join'>(initialCode ? 'join' : 'create')
   const [error, setError] = useState<string | null>(null)
@@ -26,6 +32,7 @@ export function TeamSetup({ initialCode = '' }: { initialCode?: string }) {
       setError(res.error)
       return
     }
+    onSuccess?.()
     router.refresh()
   }
 

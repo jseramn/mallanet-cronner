@@ -6,16 +6,21 @@ Flujo recomendado para que el equipo empiece a coordinarse en minutos.
 
 1. Abre la app → **Crear cuenta**.
 2. Completa nombre, email, contraseña (≥8), zona horaria (se detecta sola) y color.
-3. Entras al shell autenticado.
+3. Entras al wizard de primeros pasos (`/onboarding`).
 
 > Recuperación de contraseña por email no está incluida aún (requiere proveedor SMTP/Resend). Guarda tu contraseña o usa un gestor.
 
-## 2. Perfil y horario
+## 2. Perfil, horario y equipo (wizard)
 
-1. Ve a **Perfil**.
-2. Confirma zona horaria y modo de trabajo.
-3. Pinta tu **horario semanal** (disponible / limitado / bloqueado / deep focus).
-4. En el **Timeline** puedes arrastrar bloques puntuales (reuniones, vacaciones, etc.).
+Tras crear la cuenta entrarás a `/onboarding`:
+
+1. Pinta y **guarda** tu horario semanal (obligatorio).
+2. **Crea** un equipo o **únete** con código.
+3. Revisa la orientación de Timeline / Galaxia / Slots / Asistente.
+
+Hasta completar el wizard no puedes navegar al resto de la app. Luego puedes seguir editando perfil y horario en **Perfil**.
+
+En el **Timeline** puedes arrastrar bloques puntuales (reuniones, vacaciones, etc.).
 
 Sin horario recurrente el timeline te verá como “sin horario” la mayor parte del tiempo.
 
@@ -49,7 +54,7 @@ Cada persona solo puede estar en **un** equipo a la vez. Para cambiar, sal del a
 - **Timeline**: disponibilidad del equipo alineada a **tu** zona horaria + heatmap de overlaps.
 - **Galaxia**: vista orbital por distancia horaria.
 - **Slots**: propón ventanas de colaboración; el resto se apunta. Capacidad `0` = ilimitado.
-- **Sugerir con IA** (si hay `OPENROUTER_API_KEY`): hasta 3 sugerencias/hora; si devuelve JSON, puedes **crear el slot** con un clic.
+- **Sugerir con IA** (si hay `MISTRAL_API_KEY` u `OPENROUTER_API_KEY`): hasta 3 sugerencias/hora; si devuelve JSON, puedes **crear el slot** con un clic.
 - **Campana**: notificaciones in-app (unión, slots, ownership).
 - **Asistente** (`/assistant` o botón flotante): dudas de uso y envío de **requerimientos** de producto (Mis ideas).
 
@@ -60,7 +65,7 @@ Cada persona solo puede estar en **un** equipo a la vez. Para cambiar, sal del a
 3. Para ideas de producto, el asistente puede **guardar un requerimiento** (título, detalle, categoría).
 4. En la pestaña **Mis ideas** ves lo que enviaste.
 
-Requiere `OPENROUTER_API_KEY` en el servidor. Límite por defecto: 30 mensajes/hora.
+Requiere `MISTRAL_API_KEY` u `OPENROUTER_API_KEY` en el servidor. Límite por defecto: 30 mensajes/hora.
 
 ## 6. Cuentas demo (solo local)
 

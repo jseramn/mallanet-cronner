@@ -30,8 +30,12 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL requerido}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET requerido}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL requerido}
+      AI_PROVIDER: ${AI_PROVIDER:-mistral}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      MISTRAL_MODEL_ID: ${MISTRAL_MODEL_ID:-mistral-small-latest}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL_ID: ${OPENROUTER_MODEL_ID:-anthropic/claude-3-haiku}
+      ASSISTANT_MODEL_ID: ${ASSISTANT_MODEL_ID:-}
     networks:
       - cronner-net
     depends_on:

@@ -31,7 +31,10 @@ Alternativa (solo schema base): `pnpm db:schema` y luego `pnpm db:migrate`.
 | `DATABASE_URL` | Neon pooled URL |
 | `BETTER_AUTH_SECRET` | ≥32 chars aleatorios |
 | `BETTER_AUTH_URL` | URL pública final, p.ej. `https://cronner.mallanet.org` |
-| `OPENROUTER_API_KEY` | (opcional) key de OpenRouter — slots IA + asistente |
+| `AI_PROVIDER` | (opcional) `mistral` u `openrouter` |
+| `MISTRAL_API_KEY` | (opcional) key de Mistral — slots IA + asistente |
+| `MISTRAL_MODEL_ID` | (opcional) default `mistral-small-latest` |
+| `OPENROUTER_API_KEY` | (opcional) key de OpenRouter — alternativa |
 | `OPENROUTER_MODEL_ID` | (opcional) default `anthropic/claude-3-haiku` |
 | `ASSISTANT_MODEL_ID` | (opcional) modelo solo del asistente |
 | `ASSISTANT_RATE_LIMIT_MAX` | (opcional) default `30` mensajes/hora |
@@ -62,7 +65,7 @@ Checklist manual:
 - [ ] Segundo usuario se une con `?code=`
 - [ ] Timeline y slot de colaboración
 - [ ] Owner: regenerar invite / transferir / salir
-- [ ] Asistente: pregunta de uso + guardar un requerimiento (con OpenRouter)
+- [ ] Asistente: pregunta de uso + guardar un requerimiento (con Mistral u OpenRouter)
 
 ## 5. Rotación de secretos
 
@@ -70,7 +73,7 @@ Si el repo o un `.env.local` se compartió fuera del equipo:
 
 1. Regenera `BETTER_AUTH_SECRET` (invalida sesiones).
 2. Rota la password/URL de Neon.
-3. Rota `OPENROUTER_API_KEY`.
+3. Rota `MISTRAL_API_KEY` y/o `OPENROUTER_API_KEY`.
 4. Redeploy en Vercel.
 
 Generar secret:

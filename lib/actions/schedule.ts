@@ -11,7 +11,7 @@ const slotSchema = z
     dayOfWeek: z.number().int().min(0).max(6),
     startMinute: z.number().int().min(0).max(1439),
     endMinute: z.number().int().min(1).max(1440),
-    status: z.enum(['available', 'limited', 'blocked', 'focus']),
+    status: z.enum(['available', 'limited', 'blocked']),
   })
   .refine((s) => s.endMinute > s.startMinute, { message: 'Rango inválido' })
 
@@ -22,7 +22,7 @@ export async function saveRecurringSchedule(
     dayOfWeek: number
     startMinute: number
     endMinute: number
-    status: 'available' | 'limited' | 'blocked' | 'focus'
+    status: 'available' | 'limited' | 'blocked'
   }[],
 ) {
   const user = await getSessionUser()

@@ -13,7 +13,7 @@ El **Timeline** (`/dashboard`) muestra a todos los miembros del equipo en un eje
 - **Fila por persona** con segmentos de color según estado.
 - **Heatmap de overlap**: cuántos están disponibles en cada media hora.
 - **Línea de “ahora”**.
-- Navegación de días y filtro “Disponibles ahora”.
+- Navegación de días y filtro “En Mallanet ahora”.
 
 ## Requisitos
 

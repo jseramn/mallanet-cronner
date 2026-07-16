@@ -2,7 +2,7 @@
 id: slots-ia
 title: Sugerencias de slots con IA
 category: slots
-tags: [ia, openrouter, sugerir, slots]
+tags: [ia, mistral, openrouter, sugerir, slots]
 summary: Botón Sugerir con IA analiza disponibilidad y propone ventanas.
 ---
 
@@ -11,7 +11,7 @@ En **Slots**, el botón **Sugerir con IA** analiza la disponibilidad declarada d
 ## Requisitos
 
 - Al menos **2 miembros** en el equipo.
-- Variable de entorno `OPENROUTER_API_KEY` configurada en el servidor.
+- Variable de entorno `MISTRAL_API_KEY` u `OPENROUTER_API_KEY` configurada en el servidor.
 - Límite: **3 sugerencias por hora** por usuario.
 
 ## Resultado

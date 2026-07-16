@@ -68,14 +68,14 @@ export async function getTeamAvailability(
 const blockSchema = z.object({
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime(),
-  status: z.enum(['available', 'limited', 'blocked', 'focus']),
+  status: z.enum(['available', 'limited', 'blocked']),
   title: z.string().trim().max(120).optional(),
 })
 
 export async function createTimeBlock(input: {
   startsAt: string
   endsAt: string
-  status: 'available' | 'limited' | 'blocked' | 'focus'
+  status: 'available' | 'limited' | 'blocked'
   title?: string
 }) {
   const user = await getSessionUser()

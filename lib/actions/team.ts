@@ -412,6 +412,7 @@ export async function getMyTeam(): Promise<{ team: Team; members: TeamMember[] }
       timezone: r.timezone ?? 'UTC',
       color: r.color ?? '#3b82f6',
       work_mode: r.work_mode ?? 'full-time',
+      onboarding_completed_at: null,
       role: r.role,
     }))
 

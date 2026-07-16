@@ -51,16 +51,16 @@ export function NotificationsPopover() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <button
         onClick={toggle}
         aria-label={`Notificaciones${unread > 0 ? ` (${unread} sin leer)` : ''}`}
         aria-expanded={open}
-        className="relative text-muted-foreground hover:text-foreground transition-colors"
+        className="relative inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-colors"
       >
         <Bell size={16} aria-hidden="true" />
         {unread > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-mono">
+          <span className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-mono leading-none">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -76,7 +76,7 @@ export function NotificationsPopover() {
           <div
             role="dialog"
             aria-label="Notificaciones"
-            className="absolute bottom-full right-0 md:bottom-auto md:top-full z-50 mb-2 md:mb-0 md:mt-2 w-72 rounded-lg border bg-popover p-2 shadow-lg"
+            className="absolute z-50 w-72 max-w-[min(18rem,calc(100vw-1.5rem))] rounded-lg border bg-popover p-2 shadow-lg right-0 top-full mt-2 md:right-auto md:left-full md:top-auto md:bottom-0 md:mt-0 md:ml-2"
           >
             <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
               Notificaciones

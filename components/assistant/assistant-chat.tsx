@@ -117,6 +117,19 @@ export function AssistantChat({
             return next
           })
         }
+
+        if (!assistantText.trim()) {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1]
+            if (last?.role === 'assistant' && !last.content) {
+              return prev.slice(0, -1)
+            }
+            return prev
+          })
+          setError(
+            'La IA no devolvió texto. Probá de nuevo; si persiste, revisá la API key o el modelo del asistente.',
+          )
+        }
       } catch (e) {
         if ((e as Error).name === 'AbortError') return
         setMessages((prev) => {

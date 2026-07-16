@@ -26,7 +26,7 @@ Solo en desarrollo local (`pnpm dev:seed`). Muestra cuentas `*@demo.mallanet.org
 
 ## La IA no funciona
 
-Falta `OPENROUTER_API_KEY` o se alcanzó el rate limit. El resto de la app sigue funcionando.
+Falta `MISTRAL_API_KEY` / `OPENROUTER_API_KEY` o se alcanzó el rate limit. El resto de la app sigue funcionando.
 
 ## ¿Hay OAuth (Google/GitHub)?
 

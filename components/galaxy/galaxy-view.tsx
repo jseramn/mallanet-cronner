@@ -80,9 +80,7 @@ export function GalaxyView({
     })
   }, [availabilities, myTimezone, now])
 
-  const availableCount = nodes.filter(
-    (n) => n.status === 'available' || n.status === 'limited',
-  ).length
+  const availableCount = nodes.filter((n) => n.status === 'available').length
 
   const selectedNode = nodes.find((n) => n.userId === selected)
 
@@ -104,7 +102,7 @@ export function GalaxyView({
           Sin horario
         </span>
         <span className="ml-auto font-mono text-xs text-muted-foreground">
-          {availableCount}/{nodes.length} disponibles ahora
+          {availableCount}/{nodes.length} en Mallanet ahora
         </span>
       </div>
 
@@ -170,14 +168,14 @@ export function GalaxyView({
                   x2={n.x}
                   y2={n.y}
                   stroke={
-                    n.status === 'available' || n.status === 'limited'
+                    n.status === 'available'
                       ? 'var(--color-primary)'
                       : 'var(--color-border)'
                   }
                   strokeWidth={1}
                   opacity={n.status === 'available' ? 0.6 : 0.25}
                 />
-                {(n.status === 'available' || n.status === 'limited') && (
+                {n.status === 'available' && (
                   <circle r={2.5} fill="var(--color-primary)">
                     <animateMotion
                       dur={`${3 + n.ring}s`}
