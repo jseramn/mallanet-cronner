@@ -17,7 +17,7 @@ export type AiConfigResult = AiConfigSuccess | { error: string }
 const DEFAULT_MISTRAL_MODEL = 'mistral-small-latest'
 const DEFAULT_OPENROUTER_MODEL = 'anthropic/claude-3-haiku'
 const DEFAULT_GLM_MODEL = 'glm-5.2'
-const DEFAULT_GLM_BASE_URL = 'https://api.z.ai/api/paas/v4/'
+const DEFAULT_GLM_BASE_URL = 'https://api.z.ai/api/coding/paas/v4/'
 
 const NOT_CONFIGURED =
   'La integración de IA no está configurada. Añade GLM_API_KEY, MISTRAL_API_KEY o OPENROUTER_API_KEY en las variables de entorno.'
@@ -120,6 +120,21 @@ export function resolveAiConfig(
       apiKey,
       baseURL,
       name: 'glm',
+      // Coding Plan defaults to thinking mode; without this, content can be empty.
+      fetch: async (url, init) => {
+        if (init?.body && typeof init.body === 'string') {
+          try {
+            const body = JSON.parse(init.body) as Record<string, unknown>
+            if (body.thinking === undefined) {
+              body.thinking = { type: 'disabled' }
+            }
+            return fetch(url, { ...init, body: JSON.stringify(body) })
+          } catch {
+            // fall through
+          }
+        }
+        return fetch(url, init)
+      },
     })
     return { provider, modelId, model: glm.chat(modelId) }
   }
