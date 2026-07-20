@@ -120,7 +120,6 @@ export function resolveAiConfig(
       apiKey,
       baseURL,
       name: 'glm',
-      compatibility: 'compatible',
     })
     return { provider, modelId, model: glm.chat(modelId) }
   }
