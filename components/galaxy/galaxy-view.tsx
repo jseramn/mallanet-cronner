@@ -13,6 +13,8 @@ import { STATUS_COLORS, STATUS_LABELS, type AvailabilityStatus } from '@/lib/typ
 
 const SIZE = 640
 const CENTER = SIZE / 2
+const RING_INNER = 80
+const RING_OUTER = 300
 
 interface Node {
   userId: string
@@ -20,10 +22,39 @@ interface Node {
   color: string
   timezone: string
   offsetMin: number
+  hourDelta: number
   status: AvailabilityStatus | 'offline'
   x: number
   y: number
   ring: number
+}
+
+function hourDeltasForTeam(
+  availabilities: MemberAvailability[],
+  myUserId: string,
+  myTimezone: string,
+  now: Date,
+): number[] {
+  const myOffset = tzOffsetMinutes(myTimezone, now)
+  const hours = new Set<number>()
+  for (const a of availabilities) {
+    if (a.member.user_id === myUserId) continue
+    const offsetMin = tzOffsetMinutes(a.member.timezone, now)
+    const hourDelta = Math.min(12, Math.round(Math.abs(offsetMin - myOffset) / 60))
+    hours.add(hourDelta)
+  }
+  return [...hours].sort((a, b) => a - b)
+}
+
+function radiusForHourDelta(hourDelta: number, occupiedHours: number[]): number {
+  if (occupiedHours.length === 0) return RING_INNER
+  const idx = occupiedHours.indexOf(hourDelta)
+  if (idx < 0) {
+    const maxH = occupiedHours[occupiedHours.length - 1] || 1
+    return RING_INNER + (hourDelta / maxH) * (RING_OUTER - RING_INNER)
+  }
+  if (occupiedHours.length === 1) return (RING_INNER + RING_OUTER) / 2
+  return RING_INNER + (idx / (occupiedHours.length - 1)) * (RING_OUTER - RING_INNER)
 }
 
 export function GalaxyView({
@@ -37,6 +68,7 @@ export function GalaxyView({
 }) {
   const [now, setNow] = useState<Date | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  const [hovered, setHovered] = useState<string | null>(null)
 
   useEffect(() => {
     setNow(new Date())
@@ -44,21 +76,31 @@ export function GalaxyView({
     return () => clearInterval(id)
   }, [])
 
+  const occupiedHours = useMemo(() => {
+    if (!now) return []
+    return hourDeltasForTeam(availabilities, myUserId, myTimezone, now)
+  }, [availabilities, myUserId, myTimezone, now])
+
   const nodes: Node[] = useMemo(() => {
     if (!now) return []
     const myOffset = tzOffsetMinutes(myTimezone, now)
     const windowStart = new Date(now.getTime() - 24 * 3600_000)
     const windowEnd = new Date(now.getTime() + 24 * 3600_000)
 
-    return availabilities.map((a, i) => {
+    const byHour = new Map<number, number>()
+
+    return availabilities.map((a) => {
       const offsetMin = tzOffsetMinutes(a.member.timezone, now)
-      const diff = offsetMin - myOffset // minutos de diferencia conmigo
-      // Anillo según distancia horaria (0h → anillo 0 interno, 12h → externo)
-      const ring = Math.min(3, Math.floor(Math.abs(diff) / 60 / 3)) // 0-2h,3-5h,6-8h,9h+
-      const radius = 90 + ring * 70
-      // Ángulo: reparte los nodos, sesgado por índice para evitar solapes
+      const diff = offsetMin - myOffset
+      const hourDelta = Math.min(12, Math.round(Math.abs(diff) / 60))
+      const slot = byHour.get(hourDelta) ?? 0
+      byHour.set(hourDelta, slot + 1)
+      const radius = radiusForHourDelta(hourDelta, occupiedHours)
+      const signBias = diff === 0 ? 0 : diff > 0 ? 1 : -1
       const angle =
-        ((diff / 60 / 12) * Math.PI) / 1 + (i * 2 * Math.PI) / Math.max(availabilities.length, 1)
+        signBias * (Math.PI / 2) * 0.35 +
+        (slot * 2 * Math.PI) / Math.max(byHour.get(hourDelta) ?? 1, 1) +
+        (hourDelta * 0.15)
       const segs = expandAvailability(
         a.member.timezone,
         a.recurring,
@@ -72,17 +114,18 @@ export function GalaxyView({
         color: a.member.color,
         timezone: a.member.timezone,
         offsetMin,
+        hourDelta,
         status: currentStatus(segs, now),
         x: CENTER + radius * Math.cos(angle),
         y: CENTER + radius * Math.sin(angle),
-        ring,
+        ring: hourDelta,
       }
     })
-  }, [availabilities, myTimezone, now])
+  }, [availabilities, myTimezone, now, occupiedHours])
 
   const availableCount = nodes.filter((n) => n.status === 'available').length
-
   const selectedNode = nodes.find((n) => n.userId === selected)
+  const hoveredNode = nodes.find((n) => n.userId === hovered)
 
   return (
     <div className="flex flex-col gap-4">
@@ -113,44 +156,61 @@ export function GalaxyView({
           role="img"
           aria-label="Vista galaxia del equipo: cada nodo es un miembro, los anillos indican distancia horaria contigo"
         >
-          {/* Anillos orbitales */}
-          {[90, 160, 230, 300].map((r, i) => (
-            <circle
-              key={r}
-              cx={CENTER}
-              cy={CENTER}
-              r={r}
-              fill="none"
-              stroke="var(--color-border)"
-              strokeWidth={1}
-              strokeDasharray={i === 0 ? undefined : '4 6'}
-            />
-          ))}
-          {/* Etiquetas de anillos */}
-          {['±0-2h', '±3-5h', '±6-8h', '±9h+'].map((label, i) => (
-            <text
-              key={label}
-              x={CENTER}
-              y={CENTER - (90 + i * 70) - 6}
-              textAnchor="middle"
-              className="fill-muted-foreground"
-              fontSize={10}
-              fontFamily="var(--font-mono, monospace)"
-            >
-              {label}
-            </text>
-          ))}
+          {/* Anillos solo para horas ocupadas por el equipo */}
+          {occupiedHours.map((h, i) => {
+            const r = radiusForHourDelta(h, occupiedHours)
+            return (
+              <g key={h}>
+                <circle
+                  cx={CENTER}
+                  cy={CENTER}
+                  r={r}
+                  fill="none"
+                  stroke="var(--color-border)"
+                  strokeWidth={1}
+                  strokeDasharray={i === 0 ? undefined : '4 6'}
+                />
+                <text
+                  x={CENTER}
+                  y={CENTER - r - 6}
+                  textAnchor="middle"
+                  className="fill-muted-foreground"
+                  fontSize={10}
+                  fontFamily="var(--font-mono, monospace)"
+                >
+                  ±{h}h
+                </text>
+              </g>
+            )
+          })}
 
           {/* Núcleo: tú */}
-          <circle cx={CENTER} cy={CENTER} r={26} fill="var(--color-primary)" opacity={0.15}>
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={26}
+            fill="var(--color-primary)"
+            opacity={0.15}
+            onMouseEnter={() => setHovered(myUserId)}
+            onMouseLeave={() => setHovered((h) => (h === myUserId ? null : h))}
+          >
             <animate attributeName="r" values="26;34;26" dur="4s" repeatCount="indefinite" />
           </circle>
-          <circle cx={CENTER} cy={CENTER} r={16} fill="var(--color-primary)" />
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={16}
+            fill="var(--color-primary)"
+            className="cursor-pointer"
+            onMouseEnter={() => setHovered(myUserId)}
+            onMouseLeave={() => setHovered((h) => (h === myUserId ? null : h))}
+            onClick={() => setSelected(selected === myUserId ? null : myUserId)}
+          />
           <text
             x={CENTER}
             y={CENTER + 42}
             textAnchor="middle"
-            className="fill-foreground"
+            className="fill-foreground pointer-events-none"
             fontSize={11}
             fontWeight={600}
           >
@@ -178,7 +238,7 @@ export function GalaxyView({
                 {n.status === 'available' && (
                   <circle r={2.5} fill="var(--color-primary)">
                     <animateMotion
-                      dur={`${3 + n.ring}s`}
+                      dur={`${3 + Math.min(n.ring, 8)}s`}
                       repeatCount="indefinite"
                       path={`M ${CENTER} ${CENTER} L ${n.x} ${n.y}`}
                     />
@@ -187,7 +247,7 @@ export function GalaxyView({
                 <circle
                   cx={n.x}
                   cy={n.y}
-                  r={selected === n.userId ? 18 : 13}
+                  r={selected === n.userId || hovered === n.userId ? 18 : 13}
                   fill={n.color}
                   stroke={
                     n.status === 'offline'
@@ -198,7 +258,11 @@ export function GalaxyView({
                   className="cursor-pointer transition-all"
                   role="button"
                   tabIndex={0}
-                  aria-label={`${n.name}, ${n.status === 'offline' ? 'sin horario' : STATUS_LABELS[n.status]}`}
+                  aria-label={`${n.name}, ${n.status === 'offline' ? 'sin horario' : STATUS_LABELS[n.status]}, ${formatLocalTime(n.timezone, now!)}`}
+                  onMouseEnter={() => setHovered(n.userId)}
+                  onMouseLeave={() => setHovered((h) => (h === n.userId ? null : h))}
+                  onFocus={() => setHovered(n.userId)}
+                  onBlur={() => setHovered((h) => (h === n.userId ? null : h))}
                   onClick={() => setSelected(selected === n.userId ? null : n.userId)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -220,9 +284,31 @@ export function GalaxyView({
             ))}
         </svg>
 
+        {/* Tooltip hover */}
+        {hoveredNode && now && (
+          <div
+            className="pointer-events-none absolute z-20 rounded-md border bg-popover px-2.5 py-1.5 shadow-lg"
+            style={{
+              left: `${(hoveredNode.userId === myUserId ? CENTER : hoveredNode.x) / SIZE * 100}%`,
+              top: `${(hoveredNode.userId === myUserId ? CENTER - 40 : hoveredNode.y - 28) / SIZE * 100}%`,
+              transform: 'translate(-50%, -100%)',
+            }}
+          >
+            <p className="text-xs font-semibold text-foreground">
+              {hoveredNode.userId === myUserId ? 'Tú' : hoveredNode.name}
+            </p>
+            <p className="font-mono text-[10px] text-muted-foreground">
+              {formatLocalTime(hoveredNode.timezone, now)}
+              {hoveredNode.userId !== myUserId && (
+                <> · ±{hoveredNode.hourDelta}h · {formatOffset(hoveredNode.offsetMin)}</>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* Panel del nodo seleccionado */}
         {selectedNode && now && (
-          <div className="absolute bottom-3 left-3 right-3 md:right-auto md:w-72 rounded-lg border bg-popover p-4 shadow-lg">
+          <div className="absolute bottom-3 left-3 right-3 md:right-auto md:w-72 rounded-lg border bg-popover p-4 shadow-lg z-10">
             <div className="flex items-center gap-2.5">
               <span
                 className="size-3 rounded-full shrink-0"
@@ -267,10 +353,7 @@ export function GalaxyView({
               <div className="flex justify-between">
                 <dt>Diferencia</dt>
                 <dd>
-                  {Math.round(
-                    Math.abs(selectedNode.offsetMin - tzOffsetMinutes(myTimezone, now)) / 60,
-                  )}
-                  h contigo
+                  ±{selectedNode.hourDelta}h contigo
                 </dd>
               </div>
             </dl>
@@ -279,8 +362,9 @@ export function GalaxyView({
       </div>
 
       <p className="text-xs text-muted-foreground text-pretty">
-        Tú eres el núcleo. Cada anillo representa la distancia horaria contigo; el color del
-        borde indica el estado actual de cada miembro. Toca un nodo para ver sus detalles.
+        Tú eres el núcleo. Solo se dibujan anillos para las diferencias horarias que hay en tu
+        equipo (±1h, ±2h…). Pasa el ratón por un nodo para ver su hora local; tócalo para más
+        detalles.
       </p>
     </div>
   )

@@ -23,7 +23,19 @@ describe('resolveAiProvider', () => {
     expect(resolveAiProvider(env({}))).toBeNull()
   })
 
-  it('prefers mistral when MISTRAL_API_KEY is set', () => {
+  it('prefers glm when GLM_API_KEY is set', () => {
+    expect(
+      resolveAiProvider(
+        env({
+          GLM_API_KEY: 'glm-key',
+          MISTRAL_API_KEY: 'ms-key',
+          OPENROUTER_API_KEY: 'or-key',
+        }),
+      ),
+    ).toBe('glm')
+  })
+
+  it('prefers mistral when MISTRAL_API_KEY is set and no glm', () => {
     expect(
       resolveAiProvider(env({ MISTRAL_API_KEY: 'ms-key', OPENROUTER_API_KEY: 'or-key' })),
     ).toBe('mistral')
@@ -43,6 +55,12 @@ describe('resolveAiProvider', () => {
         }),
       ),
     ).toBe('openrouter')
+  })
+
+  it('honors AI_PROVIDER=glm', () => {
+    expect(
+      resolveAiProvider(env({ AI_PROVIDER: 'glm', MISTRAL_API_KEY: 'ms-key' })),
+    ).toBe('glm')
   })
 
   it('honors AI_PROVIDER=mistral', () => {
@@ -76,6 +94,18 @@ describe('resolveModelId', () => {
     ).toBe('ministral-8b-latest')
   })
 
+  it('uses glm defaults and ASSISTANT_MODEL_ID', () => {
+    expect(resolveModelId('glm', 'slots', env({}))).toBe('glm-5.2')
+    expect(resolveModelId('glm', 'slots', env({ GLM_MODEL_ID: 'glm-4.5' }))).toBe('glm-4.5')
+    expect(
+      resolveModelId(
+        'glm',
+        'assistant',
+        env({ GLM_MODEL_ID: 'glm-4.5', ASSISTANT_MODEL_ID: 'glm-5.2' }),
+      ),
+    ).toBe('glm-5.2')
+  })
+
   it('uses openrouter defaults and ASSISTANT_MODEL_ID', () => {
     expect(resolveModelId('openrouter', 'slots', env({}))).toBe('anthropic/claude-3-haiku')
     expect(
@@ -93,7 +123,7 @@ describe('resolveAiConfig', () => {
     const result = resolveAiConfig('slots', env({}))
     expect(result).toEqual(
       expect.objectContaining({
-        error: expect.stringContaining('MISTRAL_API_KEY'),
+        error: expect.stringContaining('GLM_API_KEY'),
       }),
     )
   })
@@ -118,6 +148,22 @@ describe('resolveAiConfig', () => {
     expect(result.modelId).toBe('mistral-small-latest')
     expect(result.model).toBeTruthy()
     expect(typeof result.model).toBe('object')
+  })
+
+  it('builds a glm model when forced', () => {
+    const result = resolveAiConfig(
+      'assistant',
+      env({
+        AI_PROVIDER: 'glm',
+        GLM_API_KEY: 'test-glm-key',
+        ASSISTANT_MODEL_ID: 'glm-5.2',
+      }),
+    )
+    expect('error' in result).toBe(false)
+    if ('error' in result) return
+    expect(result.provider).toBe('glm')
+    expect(result.modelId).toBe('glm-5.2')
+    expect(result.model).toBeTruthy()
   })
 
   it('builds an openrouter model when forced', () => {

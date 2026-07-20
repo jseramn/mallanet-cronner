@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { createTimeBlock, deleteTimeBlock, type MemberAvailability } from '@/lib/actions/availability'
@@ -349,10 +350,19 @@ export function UnifiedTimeline({
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Arrastra sobre tu fila para crear un bloque puntual con el pincel seleccionado. Los
-        bloques puntuales tienen prioridad sobre tu horario recurrente.
-      </p>
+      <div className="rounded-md border border-border/80 bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground mb-1.5">Cómo pintar un bloque puntual</p>
+        <ol className="list-decimal list-inside flex flex-col gap-1">
+          <li>
+            Elige el <span className="text-foreground">pincel</span> (arriba a la derecha).
+          </li>
+          <li>
+            En <span className="text-foreground">tu fila</span>, mantén pulsado y arrastra sobre las
+            horas.
+          </li>
+          <li>Suelta para guardar. Los bloques puntuales tienen prioridad sobre el horario semanal.</li>
+        </ol>
+      </div>
     </div>
   )
 }
@@ -374,49 +384,121 @@ function SegmentPill({
   canDelete: boolean
   onDelete: (id: number) => void
 }) {
-  const [hover, setHover] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null)
+  const pillRef = useRef<HTMLDivElement>(null)
   const start = new Date(seg.startMs)
   const end = new Date(seg.endMs)
 
+  function openMenu(e: React.MouseEvent | React.PointerEvent) {
+    e.stopPropagation()
+    const rect = pillRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setAnchor({
+      top: rect.top,
+      left: rect.left + rect.width / 2,
+    })
+    setOpen(true)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(ev: KeyboardEvent) {
+      if (ev.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
   return (
-    <div
-      className="absolute inset-y-1 rounded-sm"
-      style={{
-        left: `${left}%`,
-        width: `${width}%`,
-        backgroundColor: `color-mix(in oklch, ${STATUS_COLORS[seg.status]} ${
-          seg.source === 'block' ? 90 : 55
-        }%, transparent)`,
-        outline: seg.source === 'block' ? `1px solid ${STATUS_COLORS[seg.status]}` : undefined,
-      }}
-      onPointerEnter={() => setHover(true)}
-      onPointerLeave={() => setHover(false)}
-    >
-      {hover && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-30 whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 shadow-lg pointer-events-auto">
-          <p className="text-xs font-medium">
-            {STATUS_LABELS[seg.status]}
-            {seg.title ? ` · ${seg.title}` : ''}
-          </p>
-          <p className="font-mono text-[10px] text-muted-foreground">
-            para ti: {formatLocalTime(myTz, start)}–{formatLocalTime(myTz, end)}
-          </p>
-          {memberTz !== myTz && (
-            <p className="font-mono text-[10px] text-muted-foreground">
-              su hora: {formatLocalTime(memberTz, start)}–{formatLocalTime(memberTz, end)}
-            </p>
-          )}
-          {canDelete && seg.blockId !== undefined && (
-            <button
-              onClick={() => onDelete(seg.blockId as number)}
-              className="mt-1 flex items-center gap-1 text-[10px] text-destructive hover:underline"
+    <>
+      <div
+        ref={pillRef}
+        className={`absolute inset-y-1 rounded-sm ${canDelete ? 'cursor-pointer' : ''}`}
+        style={{
+          left: `${left}%`,
+          width: `${width}%`,
+          backgroundColor: `color-mix(in oklch, ${STATUS_COLORS[seg.status]} ${
+            seg.source === 'block' ? 90 : 55
+          }%, transparent)`,
+          outline: seg.source === 'block' ? `1px solid ${STATUS_COLORS[seg.status]}` : undefined,
+        }}
+        onClick={canDelete ? openMenu : undefined}
+        onPointerEnter={() => {
+          if (!canDelete && pillRef.current) {
+            const rect = pillRef.current.getBoundingClientRect()
+            setAnchor({ top: rect.top, left: rect.left + rect.width / 2 })
+            setOpen(true)
+          }
+        }}
+        onPointerLeave={() => {
+          if (!canDelete) setOpen(false)
+        }}
+        role={canDelete ? 'button' : undefined}
+        tabIndex={canDelete ? 0 : undefined}
+        aria-label={
+          canDelete
+            ? `${STATUS_LABELS[seg.status]}, clic para opciones`
+            : undefined
+        }
+        onKeyDown={
+          canDelete
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  openMenu(e as unknown as React.MouseEvent)
+                }
+              }
+            : undefined
+        }
+      />
+      {open &&
+        anchor &&
+        createPortal(
+          <>
+            {canDelete && (
+              <button
+                type="button"
+                className="fixed inset-0 z-40 cursor-default bg-transparent"
+                aria-label="Cerrar"
+                onClick={() => setOpen(false)}
+              />
+            )}
+            <div
+              className="fixed z-50 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 shadow-lg"
+              style={{ top: anchor.top - 8, left: anchor.left }}
+              role="dialog"
+              onClick={(e) => e.stopPropagation()}
             >
-              <Trash2 size={10} aria-hidden="true" />
-              Eliminar bloque
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+              <p className="text-xs font-medium">
+                {STATUS_LABELS[seg.status]}
+                {seg.title ? ` · ${seg.title}` : ''}
+              </p>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                para ti: {formatLocalTime(myTz, start)}–{formatLocalTime(myTz, end)}
+              </p>
+              {memberTz !== myTz && (
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  su hora: {formatLocalTime(memberTz, start)}–{formatLocalTime(memberTz, end)}
+                </p>
+              )}
+              {canDelete && seg.blockId !== undefined && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(seg.blockId as number)
+                    setOpen(false)
+                  }}
+                  className="mt-1 flex items-center gap-1 text-[10px] text-destructive hover:underline"
+                >
+                  <Trash2 size={10} aria-hidden="true" />
+                  Eliminar bloque
+                </button>
+              )}
+            </div>
+          </>,
+          document.body,
+        )}
+    </>
   )
 }

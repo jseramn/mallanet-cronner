@@ -6,6 +6,8 @@ import { mapAiError } from '@/lib/ai/errors'
 import { getSessionUser } from '@/lib/session'
 import { getMyTeam } from '@/lib/actions/team'
 import { getTeamAvailability } from '@/lib/actions/availability'
+import { getMyProfile } from '@/lib/actions/profile'
+import { isOnboardingComplete } from '@/lib/onboarding'
 import { checkAndConsumeRateLimit } from '@/lib/ai-rate-limit'
 import { expandAvailability, formatOffset, tzOffsetMinutes } from '@/lib/time'
 import { tryParseSuggestions, type SlotSuggestion } from '@/lib/suggest-parse'
@@ -28,6 +30,11 @@ export async function suggestCollabSlots(): Promise<{
 
   const user = await getSessionUser()
   if (!user) return { error: 'No autenticado' }
+
+  const profile = await getMyProfile()
+  if (!profile || !isOnboardingComplete(profile)) {
+    return { error: 'Completa el onboarding antes de usar sugerencias de IA.' }
+  }
 
   if (!(await checkAndConsumeRateLimit(user.id, 'slots', RATE_LIMIT_MAX))) {
     return {

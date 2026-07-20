@@ -52,6 +52,14 @@ export function OnboardingWizard({
   }, [step, setActiveStepHint])
 
   function goTo(next: 1 | 2 | 3) {
+    if (next >= 2 && !hasSchedule) {
+      setContinueError('Pinta al menos una franja y pulsa Guardar horario antes de continuar.')
+      return
+    }
+    if (next >= 3 && !hasTeam) {
+      setContinueError('Crea un equipo o únete con un código antes de continuar.')
+      return
+    }
     setContinueError(null)
     setStep(next)
   }
@@ -144,6 +152,29 @@ export function OnboardingWizard({
               Pinta tus franjas en tu hora local ({timezone}). Sin horario, en el Timeline aparecerás
               como «sin horario». Selecciona un estado, arrastra sobre el grid y guarda.
             </p>
+            <p className="text-sm text-muted-foreground text-pretty rounded-md border border-border/70 bg-muted/20 px-3 py-2">
+              Más adelante puedes cambiar el horario en <span className="text-foreground">Perfil</span>.
+            </p>
+            <ol className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <li className="flex items-center gap-1.5">
+                <span className="flex size-5 items-center justify-center rounded-full bg-muted font-mono text-[10px]">
+                  1
+                </span>
+                Elige estado
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="flex size-5 items-center justify-center rounded-full bg-muted font-mono text-[10px]">
+                  2
+                </span>
+                Arrastra en el grid
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="flex size-5 items-center justify-center rounded-full bg-muted font-mono text-[10px]">
+                  3
+                </span>
+                Guarda horario
+              </li>
+            </ol>
           </div>
           <ScheduleEditor initial={initialSchedule} onSaved={handleScheduleSaved} />
           {continueError && (

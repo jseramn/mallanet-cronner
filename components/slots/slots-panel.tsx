@@ -104,11 +104,11 @@ export function SlotsPanel({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+        <Button size="sm" variant="outline" onClick={() => setShowForm((v) => !v)}>
           <CalendarPlus size={14} aria-hidden="true" />
           Proponer slot
         </Button>
-        <Button size="sm" variant="outline" onClick={handleSuggest} disabled={aiPending}>
+        <Button size="sm" onClick={handleSuggest} disabled={aiPending}>
           <Sparkles size={14} aria-hidden="true" />
           {aiPending ? 'Analizando disponibilidad…' : 'Sugerir con IA'}
         </Button>

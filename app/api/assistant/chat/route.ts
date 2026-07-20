@@ -8,6 +8,7 @@ import { query } from '@/lib/db'
 import { checkAndConsumeRateLimit } from '@/lib/ai-rate-limit'
 import { getMyProfile } from '@/lib/actions/profile'
 import { getMyTeam } from '@/lib/actions/team'
+import { isOnboardingComplete } from '@/lib/onboarding'
 import {
   searchKnowledge,
   ensureCoreArticles,
@@ -64,6 +65,14 @@ export async function POST(req: Request) {
   const user = await getSessionUser()
   if (!user) {
     return Response.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
+  const earlyProfile = await getMyProfile()
+  if (!earlyProfile || !isOnboardingComplete(earlyProfile)) {
+    return Response.json(
+      { error: 'Completa el onboarding antes de usar el asistente.' },
+      { status: 403 },
+    )
   }
 
   const ai = resolveAiConfig('assistant')

@@ -31,16 +31,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const search = headerStore.get('x-search') ?? ''
   const onboardingDone = isOnboardingComplete(profile)
   const onOnboardingRoute = pathname === '/onboarding'
+  const onProfileRoute = pathname === '/profile'
 
+  // Sin perfil: solo /profile (crear/completar) — evita bucle con /onboarding.
+  if (!profile && !onProfileRoute) {
+    redirect('/profile')
+  }
+
+  // Con perfil y onboarding incompleto: solo /onboarding (y no se salta a dashboard/team/…).
   if (profile && !onboardingDone && !onOnboardingRoute) {
     redirect(onboardingRedirectTarget(pathname, search))
   }
 
-  if (onboardingDone && onOnboardingRoute) {
+  if (profile && onboardingDone && onOnboardingRoute) {
     redirect('/dashboard')
   }
 
-  const navLocked = Boolean(profile && !onboardingDone)
+  const navLocked = !profile || !onboardingDone
 
   return (
     <OnboardingNavProvider>
