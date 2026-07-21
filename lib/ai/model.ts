@@ -115,18 +115,40 @@ export function resolveAiConfig(
   }
 
   if (provider === 'glm') {
-    const baseURL = trimEnv(env.GLM_BASE_URL) ?? DEFAULT_GLM_BASE_URL
+    const baseURL = (trimEnv(env.GLM_BASE_URL) ?? DEFAULT_GLM_BASE_URL).replace(
+      /\/?$/,
+      '/',
+    )
     const glm = createOpenAI({
       apiKey,
       baseURL,
       name: 'glm',
-      // Coding Plan defaults to thinking mode; without this, content can be empty.
+      // Z.ai Coding Plan: disable thinking + strip OpenAI-only fields that break the API.
       fetch: async (url, init) => {
         if (init?.body && typeof init.body === 'string') {
           try {
             const body = JSON.parse(init.body) as Record<string, unknown>
             if (body.thinking === undefined) {
               body.thinking = { type: 'disabled' }
+            }
+            // Fields accepted by OpenAI SDK but often rejected / ignored badly by Z.ai
+            for (const key of [
+              'store',
+              'metadata',
+              'service_tier',
+              'prompt_cache_key',
+              'safety_identifier',
+              'user',
+              'prediction',
+              'modalities',
+              'prompt_cache_retention',
+            ]) {
+              delete body[key]
+            }
+            // Prefer classic max_tokens if both present
+            if (body.max_completion_tokens != null && body.max_tokens == null) {
+              body.max_tokens = body.max_completion_tokens
+              delete body.max_completion_tokens
             }
             return fetch(url, { ...init, body: JSON.stringify(body) })
           } catch {
@@ -136,6 +158,7 @@ export function resolveAiConfig(
         return fetch(url, init)
       },
     })
+    // Chat Completions (not Responses API) — required for Z.ai OpenAI-compat.
     return { provider, modelId, model: glm.chat(modelId) }
   }
 

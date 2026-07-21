@@ -127,7 +127,7 @@ export function AssistantChat({
             return prev
           })
           setError(
-            'La IA no devolvió texto. Probá de nuevo; si persiste, revisá la API key o el modelo del asistente.',
+            'La IA no devolvió texto. Recargá la página e intentá de nuevo. Si persiste, revisá el saldo del plan GLM en Z.ai.',
           )
         }
       } catch (e) {
@@ -137,7 +137,12 @@ export function AssistantChat({
           if (last?.role === 'assistant' && !last.content) return prev.slice(0, -1)
           return prev
         })
-        setError((e as Error).message || 'Error de red')
+        const msg = (e as Error).message || 'Error de red'
+        setError(
+          /Failed to find Server Action/i.test(msg)
+            ? 'La app se actualizó. Recargá la página (Ctrl+F5) e intentá de nuevo.'
+            : msg,
+        )
       } finally {
         setPending(false)
       }

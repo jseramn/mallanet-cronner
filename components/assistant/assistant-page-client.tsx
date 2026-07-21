@@ -60,26 +60,45 @@ export function AssistantPageClient({
   )
 
   async function handleNew() {
-    const res = await createConversation()
-    if (res.error || !res.id) return
-    setConversations((prev) => [
-      {
-        id: res.id!,
-        title: 'Nueva conversación',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      ...prev,
-    ])
-    setConversationId(res.id)
-    setMessages([])
-    setTab('chat')
-    router.push(`/assistant?c=${res.id}`)
+    try {
+      const res = await createConversation()
+      if (res.error || !res.id) {
+        window.location.assign('/assistant')
+        return
+      }
+      setConversations((prev) => [
+        {
+          id: res.id!,
+          title: 'Nueva conversación',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        ...prev,
+      ])
+      setConversationId(res.id)
+      setMessages([])
+      setTab('chat')
+      router.push(`/assistant?c=${res.id}`)
+    } catch (e) {
+      if (/Failed to find Server Action/i.test(String((e as Error).message))) {
+        window.location.assign('/assistant')
+        return
+      }
+      console.error(e)
+    }
   }
 
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar esta conversación?')) return
-    await deleteConversation(id)
+    try {
+      await deleteConversation(id)
+    } catch (e) {
+      if (/Failed to find Server Action/i.test(String((e as Error).message))) {
+        window.location.reload()
+        return
+      }
+      throw e
+    }
     setConversations((prev) => prev.filter((c) => c.id !== id))
     if (conversationId === id) {
       setConversationId(null)

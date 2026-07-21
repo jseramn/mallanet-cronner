@@ -16,17 +16,17 @@ describe('mapAiError', () => {
     expect(mapAiError(err)).toMatch(/API key/i)
   })
 
-  it('maps 429 to rate limit', () => {
+  it('maps 429 to balance/quota message', () => {
     const err = new APICallError({
       message: 'Too many',
       url: 'https://api.example',
       requestBodyValues: {},
       statusCode: 429,
       responseHeaders: {},
-      responseBody: '',
+      responseBody: 'Insufficient credits',
       isRetryable: true,
     })
-    expect(mapAiError(err)).toMatch(/límite/i)
+    expect(mapAiError(err)).toMatch(/saldo|cuota/i)
   })
 
   it('maps 404 to missing model', () => {
@@ -57,6 +57,10 @@ describe('mapAiError', () => {
 
   it('detects invalid key from message text', () => {
     expect(mapAiError(new Error('Invalid API key'))).toMatch(/API key/i)
+  })
+
+  it('detects GLM balance errors from message text', () => {
+    expect(mapAiError(new Error('余额不足或无可用资源包'))).toMatch(/saldo|cuota/i)
   })
 
   it('falls back to generic message', () => {

@@ -159,6 +159,7 @@ export async function POST(req: Request) {
     messages,
     // Permite tool call + respuesta final (default isStepCount(1) deja el chat vacío)
     stopWhen: stepCountIs(5),
+    maxRetries: 2,
     onError: ({ error }) => {
       console.error('[cronner] assistant stream error:', mapAiError(error), (error as Error).message)
     },
@@ -196,16 +197,24 @@ export async function POST(req: Request) {
         inputSchema: z.object({
           title: z.string().min(3).max(160),
           body: z.string().min(10).max(4000),
-          category: z.enum(['feature', 'bug', 'ux', 'integration', 'other']).default('feature'),
-          priority: z.enum(['low', 'medium', 'high']).default('medium'),
+          category: z
+            .enum(['feature', 'bug', 'ux', 'integration', 'other'])
+            .optional()
+            .describe('Por defecto feature'),
+          priority: z
+            .enum(['low', 'medium', 'high'])
+            .optional()
+            .describe('Por defecto medium'),
         }),
         execute: async ({ title, body, category, priority }) => {
           const id = nanoid(16)
+          const cat = category ?? 'feature'
+          const pri = priority ?? 'medium'
           await query(
             `INSERT INTO user_requirements
               (id, user_id, conversation_id, title, body, category, priority)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [id, user.id, conversationId, title.slice(0, 160), body.slice(0, 4000), category, priority],
+            [id, user.id, conversationId, title.slice(0, 160), body.slice(0, 4000), cat, pri],
           )
           return {
             ok: true,
@@ -243,14 +252,12 @@ export async function POST(req: Request) {
     },
   })
 
-  const response = result.toTextStreamResponse()
-  // Headers adicionales para el cliente
-  const headers = new Headers(response.headers)
-  headers.set('X-Conversation-Id', conversationId)
-  headers.set('Cache-Control', 'no-store')
-
-  return new Response(response.body, {
-    status: response.status,
-    headers,
+  const response = result.toTextStreamResponse({
+    headers: {
+      'X-Conversation-Id': conversationId,
+      'Cache-Control': 'no-store',
+    },
   })
+
+  return response
 }
